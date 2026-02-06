@@ -1,0 +1,102 @@
+{
+    "Propiedades": {
+        "labels": {
+            "Create Propiedades": "Create Property",
+            "Propiedades": "Properties"
+        },
+        "fields": {
+            "name": "Name",
+            "idOficina": "Office",
+            "fechaAlta": "Registration Date",
+            "fechaModificacion": "Modification Date",
+            "tipoOperacion": "Operation Type",
+            "tipoPropiedad": "Property Type",
+            "subTipoPropiedad": "Sub Property Type",
+            "tipoDeContrato": "Contract Type",
+            "status": "Status",
+            "idAsesorExclusiva": "Exclusive Advisor",
+            "comision": "Commission (%)",
+            "precioEnContrato": "Contract Price",
+            "monedaEnContrato": "Contract Currency",
+            "calle": "Street",
+            "numero": "Number",
+            "municipio": "Municipality",
+            "urbanizacion": "Urbanization",
+            "ciudad": "City",
+            "estado": "State",
+            "pais": "Country",
+            "precioVenta": "Sale Price",
+            "precioRenta": "Rental Price",
+            "infoExtraPrecio": "Extra Price Info",
+            "moneda": "Currency",
+            "enInternet": "On Internet",
+            "m2T": "Land M²",
+            "m2C": "Construction M²",
+            "edad": "Age (years)",
+            "createdAt": "Created At",
+            "modifiedAt": "Modified At",
+            "createdBy": "Created By",
+            "modifiedBy": "Modified By",
+            "assignedUser": "Assigned User",
+            "teams": "Teams"
+        },
+        "options": {
+            "tipoOperacion": {
+                "Venta": "Sale",
+                "Renta": "Rental",
+                "Venta/Renta": "Sale/Rental"
+            },
+            "tipoPropiedad": {
+                "Residencial": "Residential",
+                "Comercial": "Commercial",
+                "Industrial": "Industrial",
+                "Terreno": "Land",
+                "Oficina": "Office"
+            },
+            "tipoDeContrato": {
+                "Exclusividad": "Exclusive",
+                "No Exclusividad": "Non-Exclusive",
+                "Pendiente": "Pending"
+            },
+            "status": {
+                "Disponible": "Available",
+                "Reservada": "Reserved",
+                "Vendida": "Sold",
+                "Rentada": "Rented",
+                "Retirada": "Withdrawn"
+            },
+            "pais": {
+                "Venezuela": "Venezuela",
+                "Colombia": "Colombia",
+                "Panamá": "Panama",
+                "México": "Mexico",
+                "USA": "USA"
+            },
+            "moneda": {
+                "USD": "USD",
+                "VES": "VES",
+                "EUR": "EUR"
+            },
+            "monedaEnContrato": {
+                "USD": "USD",
+                "VES": "VES",
+                "EUR": "EUR"
+            }
+        },
+        "links": {
+            "idOficina": "Office",
+            "idAsesorExclusiva": "Exclusive Advisor",
+            "createdBy": "Created By",
+            "modifiedBy": "Modified By",
+            "assignedUser": "Assigned User",
+            "teams": "Teams"
+        },
+        "filters": {
+            "all": "All",
+            "active": "Active"
+        },
+        "boolFilters": {
+            "onlyMy": "Only My Properties"
+        }
+    }
+}

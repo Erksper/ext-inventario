@@ -1,9 +1,9 @@
 {
-    "module": "{@name}",
-    "name": "{@nameLabel}",
-    "description": "{@description}",
-    "author": "{@author}",
-    "bundled": {@bundled},
+    "module": "Inventario",
+    "name": "Inventario",
+    "description": "Analisis de inventario c21.",
+    "author": "Sebastian Silva",
+    "bundled": true,
     "acceptableVersions": [
         ">=9.1.0"
     ],

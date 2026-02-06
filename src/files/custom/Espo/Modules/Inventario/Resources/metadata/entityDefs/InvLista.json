@@ -1,0 +1,14 @@
+{
+    "fields": {
+        "name": {
+            "type": "varchar",
+            "required": true,
+            "trim": true
+        }
+    },
+    "links": {},
+    "collection": {
+        "orderBy": "createdAt",
+        "order": "desc"
+    }
+}

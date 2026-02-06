@@ -1,0 +1,14 @@
+{
+    "InvLista": {
+        "labels": {
+            "InvLista": "Inventory",
+            "Create InvLista": "Create Inventory"
+        },
+        "fields": {
+            "name": "Name"
+        },
+        "links": {},
+        "options": {},
+        "messages": {}
+    }
+}

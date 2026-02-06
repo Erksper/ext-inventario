@@ -1,0 +1,10 @@
+{
+    "additionalTabs": [
+        {
+            "name": "InvLista",
+            "label": "Inventario",
+            "iconClass": "fas fa-list",
+            "order": 20
+        }
+    ]
+}

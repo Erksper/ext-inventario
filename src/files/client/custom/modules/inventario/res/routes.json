@@ -1,0 +1,15 @@
+[
+    {
+        "route": "InvLista",
+        "params": {
+            "controller": "InvLista",
+            "action": "list"
+        }
+    },
+    {
+        "route": "InvLista/:action",
+        "params": {
+            "controller": "InvLista"
+        }
+    }
+]
