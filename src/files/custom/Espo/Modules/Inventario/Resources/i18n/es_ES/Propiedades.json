@@ -86,6 +86,7 @@
         "links": {
             "idOficina": "Oficina",
             "idAsesorExclusiva": "Asesor Exclusiva",
+            "invPropiedad": "Inventario Propiedad",
             "createdBy": "Creado por",
             "modifiedBy": "Modificado por",
             "assignedUser": "Usuario Asignado",

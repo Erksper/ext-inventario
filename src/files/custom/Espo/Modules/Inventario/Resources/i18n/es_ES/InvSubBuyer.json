@@ -1,0 +1,20 @@
+{
+    "InvSubBuyer": {
+        "labels": {
+            "Create InvSubBuyer": "Crear Sub Buyer",
+            "InvSubBuyer": "Sub Buyers"
+        },
+        "fields": {
+            "name": "Nombre",
+            "idInvPropiedades": "Inventario Propiedad",
+            "subBuyer": "Sub Buyer",
+            "createdAt": "Creado el",
+            "modifiedAt": "Modificado el",
+            "createdBy": "Creado por",
+            "modifiedBy": "Modificado por"
+        },
+        "links": {
+            "idInvPropiedades": "Inventario Propiedad"
+        }
+    }
+}

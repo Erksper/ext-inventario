@@ -1,0 +1,30 @@
+{
+    "InvPropiedadesRecaudos": {
+        "labels": {
+            "Create InvPropiedadesRecaudos": "Crear Relación Propiedad-Recaudo",
+            "InvPropiedadesRecaudos": "Propiedades Recaudos"
+        },
+        "fields": {
+            "name": "Nombre",
+            "idInvPropiedades": "Inventario Propiedad",
+            "idRecaudos": "Recaudo",
+            "estado": "Estado",
+            "nota": "Nota",
+            "createdAt": "Creado el",
+            "modifiedAt": "Modificado el",
+            "createdBy": "Creado por",
+            "modifiedBy": "Modificado por"
+        },
+        "options": {
+            "estado": {
+                "Modificar": "Modificar",
+                "Revisar": "Revisar",
+                "Adecuado": "Adecuado"
+            }
+        },
+        "links": {
+            "idInvPropiedades": "Inventario Propiedad",
+            "idRecaudos": "Recaudo"
+        }
+    }
+}

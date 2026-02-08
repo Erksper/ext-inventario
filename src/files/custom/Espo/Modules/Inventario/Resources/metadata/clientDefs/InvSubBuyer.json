@@ -1,0 +1,6 @@
+{
+    "controller": "record",
+    "iconClass": "fas fa-user-tag",
+    "color": "#00BCD4",
+    "modalDetailView": true
+}

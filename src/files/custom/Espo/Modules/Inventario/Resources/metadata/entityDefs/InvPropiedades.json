@@ -1,0 +1,222 @@
+{
+    "fields": {
+        "name": {
+            "type": "varchar",
+            "required": false,
+            "trim": true,
+            "maxLength": 255
+        },
+        "idPropiedad": {
+            "type": "link",
+            "required": true,
+            "view": "views/fields/link"
+        },
+        "tipoDePropiedad": {
+            "type": "varchar",
+            "maxLength": 150,
+            "trim": true
+        },
+        "buyer": {
+            "type": "enum",
+            "options": ["Comprador", "Vendedor", "Arrendador", "Arrendatario"],
+            "default": "Comprador"
+        },
+        "fotos": {
+            "type": "enum",
+            "options": ["Modificar", "Revisar", "Adecuado"],
+            "default": "Modificar",
+            "style": {
+                "Modificar": "danger",
+                "Revisar": "warning",
+                "Adecuado": "success"
+            }
+        },
+        "copy": {
+            "type": "enum",
+            "options": ["Modificar", "Revisar", "Adecuado"],
+            "default": "Modificar",
+            "style": {
+                "Modificar": "danger",
+                "Revisar": "warning",
+                "Adecuado": "success"
+            }
+        },
+        "video": {
+            "type": "enum",
+            "options": ["Modificar", "Revisar", "Adecuado"],
+            "default": "Modificar",
+            "style": {
+                "Modificar": "danger",
+                "Revisar": "warning",
+                "Adecuado": "success"
+            }
+        },
+        "videoInsertado": {
+            "type": "enum",
+            "options": ["Modificar", "Revisar", "Adecuado"],
+            "default": "Modificar",
+            "style": {
+                "Modificar": "danger",
+                "Revisar": "warning",
+                "Adecuado": "success"
+            }
+        },
+        "metricas": {
+            "type": "enum",
+            "options": ["Modificar", "Revisar", "Adecuado"],
+            "default": "Modificar",
+            "style": {
+                "Modificar": "danger",
+                "Revisar": "warning",
+                "Adecuado": "success"
+            }
+        },
+        "rotulo": {
+            "type": "enum",
+            "options": ["Modificar", "Revisar", "Adecuado"],
+            "default": "Modificar",
+            "style": {
+                "Modificar": "danger",
+                "Revisar": "warning",
+                "Adecuado": "success"
+            }
+        },
+        "precio": {
+            "type": "enum",
+            "options": ["Debajo del rango", "En rango", "Sobre el rango"],
+            "default": "En rango",
+            "style": {
+                "Sobre el rango": "warning",
+                "En rango": "success",
+                "Debajo del rango": "danger"
+            }
+        },
+        "notaLegal": {
+            "type": "enum",
+            "options": ["Modificar", "Revisar", "Adecuado"],
+            "default": "Modificar",
+            "style": {
+                "Modificar": "danger",
+                "Revisar": "warning",
+                "Adecuado": "success"
+            }
+        },
+        "notaMercadeo": {
+            "type": "enum",
+            "options": ["Modificar", "Revisar", "Adecuado"],
+            "default": "Modificar",
+            "style": {
+                "Modificar": "danger",
+                "Revisar": "warning",
+                "Adecuado": "success"
+            }
+        },
+        "notaPrecio": {
+            "type": "enum",
+            "options": ["Modificar", "Revisar", "Adecuado"],
+            "default": "Modificar",
+            "style": {
+                "Modificar": "danger",
+                "Revisar": "warning",
+                "Adecuado": "success"
+            }
+        },
+        "notaExclusiva": {
+            "type": "enum",
+            "options": ["Modificar", "Revisar", "Adecuado"],
+            "default": "Modificar",
+            "style": {
+                "Modificar": "danger",
+                "Revisar": "warning",
+                "Adecuado": "success"
+            }
+        },
+        "notaUbicacion": {
+            "type": "enum",
+            "options": ["Modificar", "Revisar", "Adecuado"],
+            "default": "Modificar",
+            "style": {
+                "Modificar": "danger",
+                "Revisar": "warning",
+                "Adecuado": "success"
+            }
+        },
+        "ubicacion": {
+            "type": "enum",
+            "options": ["Modificar", "Revisar", "Adecuado"],
+            "default": "Modificar",
+            "style": {
+                "Modificar": "danger",
+                "Revisar": "warning",
+                "Adecuado": "success"
+            }
+        },
+        "exclusividad": {
+            "type": "enum",
+            "options": [
+                "No exclusividad",
+                "Exclusividad interna de CENTURY con contrato firmado",
+                "Exclusividad pura o total con contrato firmado"
+            ],
+            "default": "No exclusividad"
+        },
+        "apoderado": {
+            "type": "bool",
+            "default": false
+        },
+        "demanda": {
+            "type": "enum",
+            "options": ["Baja demanda", "Media demanda", "Alta demanda"],
+            "default": "Media demanda"
+        },
+        "deleted": {
+            "type": "bool",
+            "default": false
+        },
+        "createdAt": {
+            "type": "datetime",
+            "readOnly": true
+        },
+        "modifiedAt": {
+            "type": "datetime",
+            "readOnly": true
+        },
+        "createdBy": {
+            "type": "link",
+            "readOnly": true
+        },
+        "modifiedBy": {
+            "type": "link",
+            "readOnly": true
+        }
+    },
+    "links": {
+        "idPropiedad": {
+            "type": "belongsTo",
+            "entity": "Propiedades",
+            "foreign": "invPropiedad"
+        },
+        "recaudos": {
+            "type": "hasMany",
+            "entity": "InvPropiedadesRecaudos",
+            "foreign": "idInvPropiedades"
+        },
+        "subBuyers": {
+            "type": "hasMany",
+            "entity": "InvSubBuyer",
+            "foreign": "idInvPropiedades"
+        },
+        "createdBy": {
+            "type": "belongsTo",
+            "entity": "User"
+        },
+        "modifiedBy": {
+            "type": "belongsTo",
+            "entity": "User"
+        }
+    },
+    "collection": {
+        "orderBy": "createdAt",
+        "order": "desc"
+    }
+}

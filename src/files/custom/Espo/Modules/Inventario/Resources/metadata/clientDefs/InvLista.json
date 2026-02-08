@@ -1,19 +1,8 @@
 {
     "controller": "inventario:controllers/inv-lista",
     "views": {
-        "list": "inventario:views/inv-lista/list"
+        "list": "inventario:views/list"
     },
-    "recordViews": {
-        "list": "views/record/list"
-    },
-    "menu": {
-        "list": {
-            "buttons": []
-        }
-    },
-    "dynamicLogic": {},
-    "filterList": [],
-    "boolFilterList": [],
     "iconClass": "fas fa-list",
     "color": "#4CAF50"
 }

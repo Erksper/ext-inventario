@@ -11,5 +11,26 @@
         "params": {
             "controller": "InvLista"
         }
+    },
+    {
+        "route": "Inventario/Propiedad/:propiedadId",
+        "params": {
+            "controller": "Inventario",
+            "action": "propiedad"
+        }
+    },
+    {
+        "route": "Inventario/Editar/:inventarioId",
+        "params": {
+            "controller": "Inventario",
+            "action": "editar"
+        }
+    },
+    {
+    "route": "InventarioPropiedad/:propiedadId",
+    "params": {
+        "controller": "InvLista",
+        "action": "inventarioPropiedad"
     }
+}
 ]

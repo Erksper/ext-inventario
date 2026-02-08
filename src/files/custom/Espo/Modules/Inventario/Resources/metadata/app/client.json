@@ -1,6 +1,21 @@
 {
   "scriptList": [
-      "__APPEND__",
-      "client/custom/modules/inventario/lib/init.js"
+    "__APPEND__",
+    "client/custom/modules/inventario/lib/init.js"
+  ],
+  "controllerList": [
+    "__APPEND__",
+    {
+      "controller": "inventario:controllers/inventario",
+      "module": "Inventario"
+    },
+    {
+      "controller": "inventario:controllers/inv-lista", 
+      "module": "Inventario"
+    }
+  ],
+  "moduleLoaderClassNameList": [
+    "__APPEND__",
+    "inventario:lib/init"
   ]
 }

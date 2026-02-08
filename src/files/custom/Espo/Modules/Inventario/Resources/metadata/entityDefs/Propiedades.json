@@ -2,7 +2,7 @@
     "fields": {
         "name": {
             "type": "varchar",
-            "required": true,
+            "required": false,
             "trim": true,
             "maxLength": 255,
             "view": "views/fields/varchar"
@@ -21,7 +21,7 @@
         },
         "tipoOperacion": {
             "type": "enum",
-            "options": ["Compartida","Otros Ingresos", "Referido", "Renta", "Venta"],
+            "options": ["Compartida", "Otros ingresos", "Referido", "Renta", "Venta"],
             "default": "Venta",
             "isSorted": true
         },
@@ -44,7 +44,14 @@
         "status": {
             "type": "enum",
             "options": ["Borrador", "Cancelada", "Cerrada", "Con contrato firmado", "Con intencion", "En promocion", "Suspendida"],
-            "default": "Borrador"
+            "default": "Disponible",
+            "style": {
+                "Disponible": "success",
+                "Reservada": "warning",
+                "Vendida": "danger",
+                "Rentada": "info",
+                "Retirada": "default"
+            }
         },
         "idAsesorExclusiva": {
             "type": "link",
@@ -72,27 +79,27 @@
         },
         "numero": {
             "type": "varchar",
-            "maxLength": 255,
+            "maxLength": 50,
             "trim": true
         },
         "municipio": {
             "type": "varchar",
-            "maxLength": 255,
+            "maxLength": 150,
             "trim": true
         },
         "urbanizacion": {
             "type": "varchar",
-            "maxLength": 255,
+            "maxLength": 150,
             "trim": true
         },
         "ciudad": {
             "type": "varchar",
-            "maxLength": 255,
+            "maxLength": 150,
             "trim": true
         },
         "estado": {
             "type": "varchar",
-            "maxLength": 255,
+            "maxLength": 150,
             "trim": true
         },
         "pais": {
@@ -172,6 +179,11 @@
         "idAsesorExclusiva": {
             "type": "belongsTo",
             "entity": "User"
+        },
+        "invPropiedad": {
+            "type": "hasOne",
+            "entity": "InvPropiedades",
+            "foreign": "idPropiedad"
         },
         "createdBy": {
             "type": "belongsTo",

@@ -1,0 +1,31 @@
+{
+    "InvRecaudos": {
+        "labels": {
+            "Create InvRecaudos": "Crear Recaudo",
+            "InvRecaudos": "Recaudos"
+        },
+        "fields": {
+            "name": "Nombre",
+            "descripcion": "Descripción",
+            "tipo": "Tipo",
+            "idCla": "Clasificación",
+            "createdAt": "Creado el",
+            "modifiedAt": "Modificado el",
+            "createdBy": "Creado por",
+            "modifiedBy": "Modificado por",
+            "assignedUser": "Usuario Asignado",
+            "teams": "Equipos"
+        },
+        "options": {
+            "tipo": {
+                "Natural": "Natural",
+                "Juridico": "Jurídico",
+                "Apoderado": "Apoderado"
+            }
+        },
+        "links": {
+            "idCla": "Clasificación",
+            "propiedadesRecaudos": "Propiedades Recaudos"
+        }
+    }
+}

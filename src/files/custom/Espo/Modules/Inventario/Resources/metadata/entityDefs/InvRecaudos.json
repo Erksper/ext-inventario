@@ -1,0 +1,82 @@
+{
+    "fields": {
+        "name": {
+            "type": "varchar",
+            "required": true,
+            "trim": true,
+            "maxLength": 255
+        },
+        "descripcion": {
+            "type": "text",
+            "rows": 4
+        },
+        "tipo": {
+            "type": "enum",
+            "options": ["Natural", "Juridico", "Apoderado"],
+            "default": "Natural",
+            "required": true
+        },
+        "idCla": {
+            "type": "link",
+            "view": "views/fields/link"
+        },
+        "deleted": {
+            "type": "bool",
+            "default": false
+        },
+        "createdAt": {
+            "type": "datetime",
+            "readOnly": true
+        },
+        "modifiedAt": {
+            "type": "datetime",
+            "readOnly": true
+        },
+        "createdBy": {
+            "type": "link",
+            "readOnly": true
+        },
+        "modifiedBy": {
+            "type": "link",
+            "readOnly": true
+        },
+        "assignedUser": {
+            "type": "link"
+        },
+        "teams": {
+            "type": "linkMultiple"
+        }
+    },
+    "links": {
+        "idCla": {
+            "type": "belongsTo",
+            "entity": "Team"
+        },
+        "propiedadesRecaudos": {
+            "type": "hasMany",
+            "entity": "InvPropiedadesRecaudos",
+            "foreign": "idRecaudos"
+        },
+        "createdBy": {
+            "type": "belongsTo",
+            "entity": "User"
+        },
+        "modifiedBy": {
+            "type": "belongsTo",
+            "entity": "User"
+        },
+        "assignedUser": {
+            "type": "belongsTo",
+            "entity": "User"
+        },
+        "teams": {
+            "type": "hasMany",
+            "entity": "Team",
+            "relationName": "EntityTeam"
+        }
+    },
+    "collection": {
+        "orderBy": "name",
+        "order": "asc"
+    }
+}

@@ -1,0 +1,12 @@
+{
+    "controller": "inventario:controllers/inventario",
+    "views": {
+        "list": "inventario:views/inventario/propiedad"
+    },
+    "iconClass": "fas fa-clipboard-check",
+    "color": "#2196F3",
+    "kanbanViewMode": true,
+    "boolFilterList": [],
+    "filterList": ["all"],
+    "modalDetailView": false
+}

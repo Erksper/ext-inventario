@@ -1,0 +1,77 @@
+{
+    "fields": {
+        "name": {
+            "type": "varchar",
+            "required": false,
+            "notStorable": true
+        },
+        "idInvPropiedades": {
+            "type": "link",
+            "required": true,
+            "view": "views/fields/link"
+        },
+        "idRecaudos": {
+            "type": "link",
+            "required": true,
+            "view": "views/fields/link"
+        },
+        "estado": {
+            "type": "enum",
+            "options": ["Modificar", "Revisar", "Adecuado"],
+            "default": "Modificar",
+            "style": {
+                "Modificar": "danger",
+                "Revisar": "warning",
+                "Adecuado": "success"
+            }
+        },
+        "nota": {
+            "type": "text",
+            "rows": 3
+        },
+        "deleted": {
+            "type": "bool",
+            "default": false
+        },
+        "createdAt": {
+            "type": "datetime",
+            "readOnly": true
+        },
+        "modifiedAt": {
+            "type": "datetime",
+            "readOnly": true
+        },
+        "createdBy": {
+            "type": "link",
+            "readOnly": true
+        },
+        "modifiedBy": {
+            "type": "link",
+            "readOnly": true
+        }
+    },
+    "links": {
+        "idInvPropiedades": {
+            "type": "belongsTo",
+            "entity": "InvPropiedades",
+            "foreign": "recaudos"
+        },
+        "idRecaudos": {
+            "type": "belongsTo",
+            "entity": "InvRecaudos",
+            "foreign": "propiedadesRecaudos"
+        },
+        "createdBy": {
+            "type": "belongsTo",
+            "entity": "User"
+        },
+        "modifiedBy": {
+            "type": "belongsTo",
+            "entity": "User"
+        }
+    },
+    "collection": {
+        "orderBy": "createdAt",
+        "order": "desc"
+    }
+}

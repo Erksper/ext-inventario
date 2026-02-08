@@ -1,0 +1,122 @@
+{
+    "InvPropiedades": {
+        "labels": {
+            "Create InvPropiedades": "Crear Inventario de Propiedad",
+            "InvPropiedades": "Inventario Propiedades"
+        },
+        "fields": {
+            "name": "Nombre",
+            "idPropiedad": "Propiedad",
+            "tipoDePropiedad": "Tipo de Propiedad",
+            "buyer": "Buyer",
+            "fotos": "Fotos",
+            "copy": "Copy",
+            "video": "Video",
+            "videoInsertado": "Video Insertado",
+            "metricas": "Métricas",
+            "rotulo": "Rótulo",
+            "precio": "Precio",
+            "notaLegal": "Legal",
+            "notaMercadeo": "Mercadeo",
+            "notaPrecio": "Precio",
+            "notaExclusiva": "Exclusiva",
+            "notaUbicacion": "Ubicación",
+            "ubicacion": "Ubicación",
+            "exclusividad": "Exclusividad",
+            "apoderado": "Apoderado",
+            "demanda": "Demanda",
+            "createdAt": "Creado el",
+            "modifiedAt": "Modificado el",
+            "createdBy": "Creado por",
+            "modifiedBy": "Modificado por"
+        },
+        "options": {
+            "buyer": {
+                "Comprador": "Comprador",
+                "Vendedor": "Vendedor",
+                "Arrendador": "Arrendador",
+                "Arrendatario": "Arrendatario"
+            },
+            "fotos": {
+                "Modificar": "Modificar",
+                "Revisar": "Revisar",
+                "Adecuado": "Adecuado"
+            },
+            "copy": {
+                "Modificar": "Modificar",
+                "Revisar": "Revisar",
+                "Adecuado": "Adecuado"
+            },
+            "video": {
+                "Modificar": "Modificar",
+                "Revisar": "Revisar",
+                "Adecuado": "Adecuado"
+            },
+            "videoInsertado": {
+                "Modificar": "Modificar",
+                "Revisar": "Revisar",
+                "Adecuado": "Adecuado"
+            },
+            "metricas": {
+                "Modificar": "Modificar",
+                "Revisar": "Revisar",
+                "Adecuado": "Adecuado"
+            },
+            "rotulo": {
+                "Modificar": "Modificar",
+                "Revisar": "Revisar",
+                "Adecuado": "Adecuado"
+            },
+            "precio": {
+                "Debajo del rango": "Debajo del rango",
+                "En rango": "En rango",
+                "Sobre el rango": "Sobre el rango"
+            },
+            "notaLegal": {
+                "Modificar": "Modificar",
+                "Revisar": "Revisar",
+                "Adecuado": "Adecuado"
+            },
+            "notaMercadeo": {
+                "Modificar": "Modificar",
+                "Revisar": "Revisar",
+                "Adecuado": "Adecuado"
+            },
+            "notaPrecio": {
+                "Modificar": "Modificar",
+                "Revisar": "Revisar",
+                "Adecuado": "Adecuado"
+            },
+            "notaExclusiva": {
+                "Modificar": "Modificar",
+                "Revisar": "Revisar",
+                "Adecuado": "Adecuado"
+            },
+            "notaUbicacion": {
+                "Modificar": "Modificar",
+                "Revisar": "Revisar",
+                "Adecuado": "Adecuado"
+            },
+            "ubicacion": {
+                "Modificar": "Modificar",
+                "Revisar": "Revisar",
+                "Adecuado": "Adecuado"
+            },
+            "exclusividad": {
+                "No exclusividad": "No exclusividad",
+                "Exclusividad interna de CENTURY con contrato firmado": "Exclusividad interna de CENTURY con contrato firmado",
+                "Exclusividad pura o total con contrato firmado": "Exclusividad pura o total con contrato firmado"
+            },
+            "demanda": {
+                "Baja demanda": "Baja demanda",
+                "Media demanda": "Media demanda",
+                "Alta demanda": "Alta demanda"
+            }
+        },
+        "links": {
+            "idPropiedad": "Propiedad",
+            "recaudos": "Recaudos",
+            "subBuyers": "Sub Buyers"
+        }
+    }
+}
