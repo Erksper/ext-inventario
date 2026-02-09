@@ -1,36 +1,17 @@
 [
     {
         "route": "InvLista",
+        "action": "list"
+    },
+    {
+        "route": "InvLista/propiedad/:propiedadId",
+        "action": "propiedad",
         "params": {
-            "controller": "InvLista",
-            "action": "list"
+            "propiedadId": ":propiedadId"
         }
     },
     {
         "route": "InvLista/:action",
-        "params": {
-            "controller": "InvLista"
-        }
-    },
-    {
-        "route": "Inventario/Propiedad/:propiedadId",
-        "params": {
-            "controller": "Inventario",
-            "action": "propiedad"
-        }
-    },
-    {
-        "route": "Inventario/Editar/:inventarioId",
-        "params": {
-            "controller": "Inventario",
-            "action": "editar"
-        }
-    },
-    {
-    "route": "InventarioPropiedad/:propiedadId",
-    "params": {
-        "controller": "InvLista",
-        "action": "inventarioPropiedad"
+        "action": ":action"
     }
-}
 ]

@@ -2,21 +2,15 @@
     "fields": {
         "name": {
             "type": "varchar",
-            "notStorable": true,
-            "select": {
-                "select": "subBuyer"
-            }
-        },
-        "idInvPropiedades": {
-            "type": "link",
-            "required": true,
-            "view": "views/fields/link"
-        },
-        "subBuyer": {
-            "type": "varchar",
-            "required": true,
             "maxLength": 255,
-            "trim": true
+            "trim": true,
+            "required": true
+        },
+        "buyer": {
+            "type": "enum",
+            "options": ["Comprador", "Vendedor", "Arrendador", "Arrendatario"],
+            "default": "Comprador",
+            "required": true
         },
         "deleted": {
             "type": "bool",
@@ -40,11 +34,6 @@
         }
     },
     "links": {
-        "idInvPropiedades": {
-            "type": "belongsTo",
-            "entity": "InvPropiedades",
-            "foreign": "subBuyers"
-        },
         "createdBy": {
             "type": "belongsTo",
             "entity": "User"
@@ -55,7 +44,7 @@
         }
     },
     "collection": {
-        "orderBy": "createdAt",
-        "order": "desc"
+        "orderBy": "name",
+        "order": "asc"
     }
 }

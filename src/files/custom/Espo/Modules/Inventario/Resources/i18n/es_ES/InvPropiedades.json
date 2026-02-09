@@ -8,7 +8,9 @@
             "name": "Nombre",
             "idPropiedad": "Propiedad",
             "tipoDePropiedad": "Tipo de Propiedad",
+            "tipoPersona": "Tipo de Persona",
             "buyer": "Buyer",
+            "subBuyer": "Sub Buyer",
             "fotos": "Fotos",
             "copy": "Copy",
             "video": "Video",
@@ -31,6 +33,10 @@
             "modifiedBy": "Modificado por"
         },
         "options": {
+            "tipoPersona": {
+                "Natural": "Natural",
+                "Juridico": "Jurídico"
+            },
             "buyer": {
                 "Comprador": "Comprador",
                 "Vendedor": "Vendedor",

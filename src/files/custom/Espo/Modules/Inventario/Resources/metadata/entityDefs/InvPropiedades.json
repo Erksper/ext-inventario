@@ -16,10 +16,20 @@
             "maxLength": 150,
             "trim": true
         },
+        "tipoPersona": {
+            "type": "enum",
+            "options": ["Natural", "Juridico"],
+            "default": "Natural"
+        },
         "buyer": {
             "type": "enum",
             "options": ["Comprador", "Vendedor", "Arrendador", "Arrendatario"],
             "default": "Comprador"
+        },
+        "subBuyer": {
+            "type": "varchar",
+            "maxLength": 255,
+            "trim": true
         },
         "fotos": {
             "type": "enum",

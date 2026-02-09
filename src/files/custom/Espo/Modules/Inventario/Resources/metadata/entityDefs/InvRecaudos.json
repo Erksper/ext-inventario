@@ -12,9 +12,13 @@
         },
         "tipo": {
             "type": "enum",
-            "options": ["Natural", "Juridico", "Apoderado"],
+            "options": ["Natural", "Juridico", "Mercadeo", "Apoderado"],
             "default": "Natural",
             "required": true
+        },
+        "default": {
+            "type": "bool",
+            "default": true
         },
         "idCla": {
             "type": "link",

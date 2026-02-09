@@ -535,8 +535,9 @@ define('inventario:views/list', [
         },
 
         verDetalle: function (propiedadId) {
-            // Siempre redirigir a la ruta personalizada
-            this.getRouter().navigate('#Inventario/Propiedad/' + propiedadId, { trigger: true });
+            console.log('Navegando a detalle de propiedad ID:', propiedadId);
+            // Usar la ruta correcta con parámetro
+            this.getRouter().navigate('#InvLista/propiedad/propiedadId=' + propiedadId, { trigger: true });
         }
     });
 });
