@@ -24,8 +24,11 @@ define('inventario:views/modules/recaudos-dinamicos', [], function () {
         }
         
         return new Promise(function (resolve, reject) {
+            // Para tipos array (legal), convertir a JSON string
+            var tipoParam = Array.isArray(tipo) ? JSON.stringify(tipo) : tipo;
+            
             Espo.Ajax.getRequest('InvPropiedades/action/getRecaudosByTipo', { 
-                tipo: tipo,
+                tipo: tipoParam,
                 default: esPorDefecto
             })
                 .then(function (response) {
@@ -70,7 +73,7 @@ define('inventario:views/modules/recaudos-dinamicos', [], function () {
         html += '<tbody>';
         
         recaudos.forEach(function (recaudo) {
-            html += '<tr class="recaudo-row" data-recaudo-id="' + recaudo.id + '">';
+            html += '<tr class="recaudo-row" data-recaudo-id="' + recaudo.id + '" data-es-por-defecto="' + (recaudo.default || false) + '">';
             html += '<td>';
             html += '<div class="recaudo-texto-container">';
             
@@ -90,6 +93,12 @@ define('inventario:views/modules/recaudos-dinamicos', [], function () {
             }
             
             html += '<h4>' + this.escapeHtml(recaudo.name) + '</h4>';
+            
+            // Indicador si es por defecto
+            if (recaudo.default) {
+                html += '<span class="badge badge-default" style="margin-left: 10px; background-color: #6c757d; color: white; font-size: 10px;">Por defecto</span>';
+            }
+            
             html += '</div>';
             html += '</td>';
             
@@ -121,19 +130,16 @@ define('inventario:views/modules/recaudos-dinamicos', [], function () {
             html += '</div>';
             html += '</td>';
             
-            // Botón para eliminar (solo si no es por defecto)
+            // Botón para eliminar (siempre visible, pero con confirmación diferente para por defecto)
             html += '<td>';
-            if (!sonPorDefecto) {
-                html += '<button class="btn-eliminar-recaudo" ';
-                html += 'data-action="eliminarRecaudo" ';
-                html += 'data-recaudo-id="' + recaudo.id + '" ';
-                html += 'data-campo-id="' + campoId + '" ';
-                html += 'title="Eliminar este recaudo">';
-                html += '<i class="fas fa-minus-circle"></i>';
-                html += '</button>';
-            } else {
-                html += '&nbsp;';
-            }
+            html += '<button class="btn-eliminar-recaudo" ';
+            html += 'data-action="eliminarRecaudo" ';
+            html += 'data-recaudo-id="' + recaudo.id + '" ';
+            html += 'data-campo-id="' + campoId + '" ';
+            html += 'data-es-por-defecto="' + (recaudo.default || false) + '" ';
+            html += 'title="' + (recaudo.default ? 'Eliminar recaudo por defecto' : 'Eliminar este recaudo') + '">';
+            html += '<i class="fas fa-minus-circle"></i>';
+            html += '</button>';
             html += '</td>';
             
             html += '</tr>';
@@ -161,6 +167,11 @@ define('inventario:views/modules/recaudos-dinamicos', [], function () {
         this.cargarRecaudosPorTipo(tipo, false)
             .then(function (recaudos) {
                 var $select = self.view.$el.find('#select-agregar-' + campoId);
+                if ($select.length === 0) {
+                    console.error('Select no encontrado: #select-agregar-' + campoId);
+                    return;
+                }
+                
                 $select.empty();
                 $select.append('<option value="">Seleccione un elemento para agregar</option>');
                 
@@ -178,10 +189,11 @@ define('inventario:views/modules/recaudos-dinamicos', [], function () {
                     });
                 }
                 
-                // Mostrar el panel si hay elementos disponibles
-                if (recaudosDisponibles.length > 0) {
-                    self.view.$el.find('#panel-agregar-' + campoId).show();
-                }
+                // Siempre agregar opción para crear nuevo
+                $select.append('<option value="crear_nuevo">+ Crear nuevo requisito</option>');
+                
+                // Mostrar el panel
+                self.view.$el.find('#panel-agregar-' + campoId).show();
             })
             .catch(function (error) {
                 console.error('Error cargando recaudos para agregar:', error);
@@ -193,11 +205,14 @@ define('inventario:views/modules/recaudos-dinamicos', [], function () {
         var tipo = this.getTipoPorCampoId(campoId);
         
         // Buscar el recaudo en los cache
-        var cacheKey = tipo + '_nodefault';
+        var cacheKey = Array.isArray(tipo) ? tipo.join('_') + '_nodefault' : tipo + '_nodefault';
         var recaudos = this.recaudosNoPorDefectoCache[cacheKey] || [];
         var recaudo = recaudos.find(function(r) { return r.id == recaudoId; });
         
-        if (!recaudo) return;
+        if (!recaudo) {
+            console.error('Recaudo no encontrado:', recaudoId);
+            return;
+        }
         
         // Agregar a la lista de recaudos agregados
         this.recaudosAgregados[campoId].push(recaudo);
@@ -207,10 +222,20 @@ define('inventario:views/modules/recaudos-dinamicos', [], function () {
         
         // Agregar a la tabla
         var $tabla = self.view.$el.find('#contenedor-recaudos-' + campoId + ' .recaudos-table tbody');
-        $tabla.append(htmlRecaudo);
+        if ($tabla.length === 0) {
+            // Si no hay tabla, crear una nueva
+            var htmlTabla = '<table class="table table-bordered recaudos-table"><tbody>' + htmlRecaudo + '</tbody></table>';
+            self.view.$el.find('#contenedor-recaudos-' + campoId).html(htmlTabla);
+        } else {
+            $tabla.append(htmlRecaudo);
+        }
         
         // Agregar input hidden
         var $hiddenInputs = self.view.$el.find('#contenedor-recaudos-' + campoId + ' .recaudos-hidden-inputs');
+        if ($hiddenInputs.length === 0) {
+            self.view.$el.find('#contenedor-recaudos-' + campoId).append('<div class="recaudos-hidden-inputs"></div>');
+            $hiddenInputs = self.view.$el.find('#contenedor-recaudos-' + campoId + ' .recaudos-hidden-inputs');
+        }
         $hiddenInputs.append('<input type="hidden" id="recaudo_' + recaudo.id + '_' + campoId + '" value="Modificar">');
         
         // Actualizar el select
@@ -234,7 +259,7 @@ define('inventario:views/modules/recaudos-dinamicos', [], function () {
         recaudosAgregados.splice(index, 1);
         
         // Remover de la tabla
-        self.view.$el.find('tr[data-recaudo-id="' + recaudoId + '"]').remove();
+        self.view.$el.find('#contenedor-recaudos-' + campoId + ' tr[data-recaudo-id="' + recaudoId + '"]').remove();
         
         // Remover input hidden
         self.view.$el.find('#recaudo_' + recaudoId + '_' + campoId).remove();
@@ -325,6 +350,54 @@ define('inventario:views/modules/recaudos-dinamicos', [], function () {
         return html;
     };
 
+    RecaudosDinamicosManager.prototype.agregarRecaudoDesdeCreacion = function (recaudoId, campoId) {
+        var self = this;
+        var tipo = this.getTipoPorCampoId(campoId);
+        
+        // Primero obtener los detalles del recaudo creado
+        Espo.Ajax.getRequest('InvRecaudos/action/getRecaudoById', { id: recaudoId })
+            .then(function (response) {
+                if (response.success && response.data) {
+                    var recaudo = response.data;
+                    
+                    // Agregar a la lista de recaudos agregados
+                    self.recaudosAgregados[campoId].push(recaudo);
+                    
+                    // Crear HTML para el nuevo recaudo
+                    var htmlRecaudo = self.crearHTMLRecaudoIndividual(recaudo, campoId, false);
+                    
+                    // Agregar a la tabla
+                    var $tabla = self.view.$el.find('#contenedor-recaudos-' + campoId + ' .recaudos-table tbody');
+                    if ($tabla.length === 0) {
+                        // Si no hay tabla, crear una nueva
+                        var htmlTabla = '<table class="table table-bordered recaudos-table"><tbody>' + htmlRecaudo + '</tbody></table>';
+                        self.view.$el.find('#contenedor-recaudos-' + campoId).html(htmlTabla);
+                    } else {
+                        $tabla.append(htmlRecaudo);
+                    }
+                    
+                    // Agregar input hidden
+                    var $hiddenInputs = self.view.$el.find('#contenedor-recaudos-' + campoId + ' .recaudos-hidden-inputs');
+                    if ($hiddenInputs.length === 0) {
+                        self.view.$el.find('#contenedor-recaudos-' + campoId).append('<div class="recaudos-hidden-inputs"></div>');
+                        $hiddenInputs = self.view.$el.find('#contenedor-recaudos-' + campoId + ' .recaudos-hidden-inputs');
+                    }
+                    $hiddenInputs.append('<input type="hidden" id="recaudo_' + recaudo.id + '_' + campoId + '" value="Modificar">');
+                    
+                    // Actualizar el select
+                    self.actualizarSelectAgregar(campoId);
+                    
+                    // Inicializar tooltips
+                    self.view.inicializarTooltipsRecaudos();
+                    
+                    Espo.Ui.success('Recaudo agregado a la lista');
+                }
+            })
+            .catch(function (error) {
+                console.error('Error obteniendo detalles del recaudo:', error);
+            });
+    };
+
     RecaudosDinamicosManager.prototype.getTipoPorCampoId = function (campoId) {
         var tipos = {
             'legal': ['Natural', 'Juridico'],
@@ -332,7 +405,7 @@ define('inventario:views/modules/recaudos-dinamicos', [], function () {
             'apoderado': 'Apoderado'
         };
         
-        return tipos[campoId];
+        return tipos[campoId] || campoId;
     };
 
     RecaudosDinamicosManager.prototype.escapeHtml = function (text) {

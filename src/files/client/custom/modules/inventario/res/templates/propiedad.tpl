@@ -1,3 +1,4 @@
+<link rel="stylesheet" type="text/css" href="client/custom/modules/inventario/res/styles/inv-propiedades.css">
 <div class="container-fluid inv-propiedad-container">
     <!-- Header principal -->
     <div class="row mb-4">
@@ -18,6 +19,9 @@
                     <div class="header-actions">
                         <button class="btn btn-secondary" data-action="volver">
                             <i class="fas fa-arrow-left"></i> Volver
+                        </button>
+                        <button class="btn btn-info" data-action="depurar" style="margin-left: 10px;">
+                            <i class="fas fa-bug"></i> Depurar
                         </button>
                     </div>
                 </div>
@@ -146,16 +150,12 @@
                 <!-- Panel para agregar nuevos requisitos -->
                 <div class="agregar-recaudo-panel" id="panel-agregar-legal" style="margin-top: 20px; display: none;">
                     <div class="panel panel-default">
-                        <div class="panel-heading">
-                            <h5 class="panel-title">
-                                <i class="fas fa-plus-circle"></i> Agregar nuevo requisito
-                            </h5>
-                        </div>
                         <div class="panel-body">
                             <div class="row">
                                 <div class="col-md-8">
                                     <select id="select-agregar-legal" class="form-control">
                                         <option value="">Seleccione un requisito para agregar</option>
+                                        <option value="crear_nuevo">+ Crear nuevo requisito</option>
                                     </select>
                                 </div>
                                 <div class="col-md-4">
@@ -216,16 +216,12 @@
                 <!-- Panel para agregar nuevos elementos de mercadeo -->
                 <div class="agregar-recaudo-panel" id="panel-agregar-mercadeo" style="margin-top: 20px; display: none;">
                     <div class="panel panel-default">
-                        <div class="panel-heading">
-                            <h5 class="panel-title">
-                                <i class="fas fa-plus-circle"></i> Agregar nuevo elemento de mercadeo
-                            </h5>
-                        </div>
                         <div class="panel-body">
                             <div class="row">
                                 <div class="col-md-8">
                                     <select id="select-agregar-mercadeo" class="form-control">
                                         <option value="">Seleccione un elemento para agregar</option>
+                                        <option value="crear_nuevo">+ Crear nuevo elemento</option>
                                     </select>
                                 </div>
                                 <div class="col-md-4">
@@ -280,16 +276,12 @@
                 <!-- Panel para agregar nuevos requisitos de apoderado -->
                 <div class="agregar-recaudo-panel" id="panel-agregar-apoderado" style="margin-top: 20px; display: none;">
                     <div class="panel panel-default">
-                        <div class="panel-heading">
-                            <h5 class="panel-title">
-                                <i class="fas fa-plus-circle"></i> Agregar nuevo requisito de apoderado
-                            </h5>
-                        </div>
                         <div class="panel-body">
                             <div class="row">
                                 <div class="col-md-8">
                                     <select id="select-agregar-apoderado" class="form-control">
                                         <option value="">Seleccione un requisito para agregar</option>
+                                        <option value="crear_nuevo">+ Crear nuevo requisito</option>
                                     </select>
                                 </div>
                                 <div class="col-md-4">
@@ -309,9 +301,20 @@
             <div class="panel-heading" data-action="toggle-panel">
                 <h4 class="panel-title">
                     <i class="fas fa-ellipsis-h"></i> Otros
-                    <!-- Badge con el estado seleccionado -->
-                    <span class="panel-status-badge" id="status-otros" style="float: right; margin-left: 10px; font-weight: bold;">
-                        <span class="status-text">Pendiente</span>
+                    <!-- Estados individuales con diseño de cuadro -->
+                    <span class="panel-status-container">
+                        <span class="status-box" id="status-exclusividad" data-campo="exclusividad">
+                            <span class="status-label">Exclusividad</span>
+                        </span>
+                        <span class="status-box" id="status-precio" data-campo="precio">
+                            <span class="status-label">Precio</span>
+                        </span>
+                        <span class="status-box" id="status-ubicacion" data-campo="ubicacion">
+                            <span class="status-label">Ubicación</span>
+                        </span>
+                        <span class="status-box" id="status-demanda" data-campo="demanda">
+                            <span class="status-label">Demanda</span>
+                        </span>
                     </span>
                     <span class="fas fa-chevron-down"></span>
                 </h4>
@@ -478,672 +481,33 @@
     </div>
 </div>
 
-<style>
-/* Variables de colores */
-:root {
-    --color-primary: #B8A279;
-    --color-success: #27ae60;
-    --color-warning: #f39c12;
-    --color-danger: #e74c3c;
-    --color-gray: #95a5a6;
-    --color-dark: #1A1A1A;
-    --color-light: #F5F5F5;
-}
-
-/* Container */
-.inv-propiedad-container {
-    padding: 30px;
-    background-color: var(--color-light);
-    min-height: 100vh;
-}
-
-/* Header */
-.page-header-card {
-    background: #FFFFFF;
-    border-radius: 12px;
-    padding: 30px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    border: 1px solid #E6E6E6;
-}
-
-.header-left {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    flex: 1;
-}
-
-.header-icon {
-    width: 60px;
-    height: 60px;
-    background: var(--color-primary);
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 28px;
-}
-
-.page-title {
-    color: var(--color-dark);
-    font-weight: 700;
-    font-size: 32px;
-    margin: 0 0 8px 0;
-}
-
-.page-subtitle {
-    color: #666666;
-    font-size: 16px;
-    margin: 0;
-}
-
-.header-actions {
-    display: flex;
-    gap: 10px;
-}
-
-/* Paneles */
-.panel {
-    background: #FFFFFF;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    border: 1px solid #E6E6E6;
-    margin-bottom: 20px;
-    transition: all 0.3s ease;
-}
-
-.panel-heading {
-    background-color: #f8f9fa;
-    border-bottom: 1px solid #E6E6E6;
-    padding: 15px 20px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-    border-radius: 8px 8px 0 0;
-    position: relative;
-}
-
-.panel-heading:hover {
-    background-color: #e9ecef;
-}
-
-.panel-title {
-    color: #363438;
-    font-weight: 600;
-    font-size: 16px;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.panel-title .fas {
-    color: var(--color-primary);
-}
-
-.nota-percentaje {
-    font-size: 14px;
-    color: var(--color-primary);
-    font-weight: 600;
-}
-
-.panel-body {
-    padding: 20px;
-}
-
-/* Info items */
-.info-item {
-    margin-bottom: 15px;
-}
-
-.info-label {
-    font-size: 12px;
-    color: #666;
-    margin-bottom: 2px;
-    font-weight: 600;
-}
-
-.info-value {
-    font-size: 14px;
-    font-weight: 500;
-}
-
-/* Form controls */
-.form-group {
-    margin-bottom: 15px;
-}
-
-.form-label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 600;
-    color: #363438;
-    font-size: 14px;
-}
-
-.form-control {
-    width: 100%;
-    border: 2px solid #E6E6E6;
-    border-radius: 6px;
-    padding: 8px 12px;
-    font-size: 14px;
-    transition: all 0.3s ease;
-}
-
-.form-control:focus {
-    border-color: var(--color-primary);
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(184, 162, 121, 0.1);
-}
-
-/* Selects con semáforo */
-.select-semaforo {
-    font-weight: bold;
-}
-
-.select-semaforo option[value="Modificar"] {
-    background-color: var(--color-danger);
-    color: white;
-}
-
-.select-semaforo option[value="Revisar"] {
-    background-color: var(--color-warning);
-    color: white;
-}
-
-.select-semaforo option[value="Adecuado"] {
-    background-color: var(--color-success);
-    color: white;
-}
-
-.select-semaforo-precio option[value="Debajo del rango"] {
-    background-color: var(--color-danger);
-    color: white;
-}
-
-.select-semaforo-precio option[value="En rango"] {
-    background-color: var(--color-success);
-    color: white;
-}
-
-.select-semaforo-precio option[value="Sobre el rango"] {
-    background-color: var(--color-warning);
-    color: white;
-}
-
-/* Radio buttons */
-.radio-group {
-    display: flex;
-    gap: 20px;
-}
-
-.radio-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    font-size: 14px;
-}
-
-.radio-label input[type="radio"] {
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-}
-
-/* Badges */
-.badge {
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 600;
-    display: inline-block;
-}
-
-/* Botones */
-.form-actions {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-    margin-top: 30px;
-    padding: 20px;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    border: 1px solid #E6E6E6;
-}
-
-.btn {
-    padding: 10px 20px;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 14px;
-    border: none;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.btn-primary {
-    background: var(--color-primary);
-    color: white;
-}
-
-.btn-primary:hover {
-    background: #9D8B5F;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(184, 162, 121, 0.3);
-}
-
-.btn-default {
-    background: white;
-    color: #666;
-    border: 2px solid #E6E6E6;
-}
-
-.btn-default:hover {
-    background: #f8f9fa;
-}
-
-.btn-secondary {
-    background: #6c757d;
-    color: white;
-}
-
-.btn-secondary:hover {
-    background: #5a6268;
-}
-
-/* Spinners */
-.spinner-large {
-    width: 60px;
-    height: 60px;
-    border: 4px solid #E6E6E6;
-    border-top: 4px solid var(--color-primary);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 0 auto;
-}
-
-.spinner-small {
-    width: 30px;
-    height: 30px;
-    border: 3px solid #E6E6E6;
-    border-top: 3px solid var(--color-primary);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 10px auto;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* Alert */
-.alert {
-    padding: 15px;
-    border-radius: 6px;
-    margin-bottom: 15px;
-}
-
-.alert-info {
-    background-color: #d1ecf1;
-    border: 1px solid #bee5eb;
-    color: #0c5460;
-}
-
-.alert-danger {
-    background-color: #f8d7da;
-    border: 1px solid #f5c6cb;
-    color: #721c24;
-}
-
-/* Tablas de semáforo */
-.semaforo-table {
-    margin-top: 20px;
-    border: 2px solid #000;
-}
-
-.semaforo-table thead tr {
-    background: #f5f5f5;
-}
-
-.semaforo-table thead th {
-    border: 1px solid #000;
-    color: black;
-    text-align: center;
-    font-size: 14px;
-    width: 20%;
-}
-
-.semaforo-table thead th:first-child {
-    width: 40%;
-    text-align: left;
-}
-
-.semaforo-table thead th .fa-circle {
-    margin-right: 5px;
-}
-
-.semaforo-table thead th .icon-verde {
-    color: #27ae60;
-}
-
-.semaforo-table thead th .icon-amarillo {
-    color: #f39c12;
-}
-
-.semaforo-table thead th .icon-rojo {
-    color: #e74c3c;
-}
-
-.semaforo-table tbody td {
-    border: 1px solid #000;
-    padding: 15px;
-    text-align: center;
-    vertical-align: middle;
-}
-
-.semaforo-table tbody .campo-row td:first-child {
-    padding: 15px;
-    font-weight: 500;
-    text-align: left;
-}
-
-.campo-texto-container {
-    display: flex;
-    align-items: center;
-}
-
-.campo-texto-container h4 {
-    font-size: 15px;
-    margin: 0;
-    color: #363438;
-}
-
-/* Estilos para recaudos */
-.recaudos-table {
-    margin-top: 20px;
-    border: 2px solid #000;
-}
-
-.recaudos-table thead tr {
-    background: #f5f5f5;
-}
-
-.recaudos-table thead th {
-    border: 1px solid #000;
-    color: black;
-    text-align: center;
-    font-size: 14px;
-    width: 20%;
-}
-
-.recaudos-table thead th:first-child {
-    width: 40%;
-    text-align: left;
-}
-
-.recaudo-texto-container {
-    display: flex;
-    align-items: flex-start;
-}
-
-.recaudo-icon-space {
-    display: inline-block;
-    width: 25px;
-    flex-shrink: 0;
-    text-align: left;
-}
-
-.recaudo-row h4 {
-    font-size: 14px;
-    margin: 0;
-    flex: 1;
-    font-weight: 500;
-}
-
-.info-icon {
-    color: #17a2b8;
-    font-size: 16px;
-    cursor: pointer;
-    margin-right: 5px;
-    transition: color 0.2s ease, transform 0.2s ease;
-}
-
-.info-icon:hover {
-    color: #138496;
-    transform: scale(1.1);
-}
-
-/* Opciones de color tipo semáforo */
-.color-option {
-    position: relative;
-    width: 30px;
-    height: 30px;
-    margin: 0 auto;
-    border-radius: 6px;
-    border: 2px solid #ddd;
-    cursor: pointer;
-    background-color: #f8f9fa; /* Color de fondo por defecto */
-    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.color-option:hover {
-    opacity: 0.9;
-    transform: scale(1.05);
-}
-
-.color-option.selected {
-    border-color: #000 !important;
-    border-width: 3px !important;
-    transform: scale(1.15);
-    box-shadow: 0 0 0 1px #fff, 0 0 0 3px #000;
-    animation: pulse 0.4s ease-in-out;
-}
-
-/* Colores base para las opciones (deben tener color de fondo) */
-.color-verde {
-    background-color: #27ae60 !important;
-    border-color: #27ae60;
-}
-
-.color-amarillo {
-    background-color: #f39c12 !important;
-    border-color: #f39c12;
-}
-
-.color-rojo {
-    background-color: #e74c3c !important;
-    border-color: #e74c3c;
-}
-
-.color-option.selected::after {
-    content: '✓';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: white;
-    font-size: 16px;
-    font-weight: bold;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-}
-
-@keyframes pulse {
-    0% { transform: scale(1.15); }
-    50% { transform: scale(1.25); }
-    100% { transform: scale(1.15); }
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .inv-propiedad-container {
-        padding: 15px;
-    }
-    
-    .page-title {
-        font-size: 24px;
-    }
-    
-    .header-left {
-        flex-direction: column;
-        text-align: center;
-    }
-    
-    .form-actions {
-        flex-direction: column;
-    }
-    
-    .btn {
-        width: 100%;
-        justify-content: center;
-    }
-    
-    .nota-percentaje {
-        position: absolute;
-        right: 50px;
-        top: 50%;
-        transform: translateY(-50%);
-    }
-    
-    .semaforo-table thead th,
-    .recaudos-table thead th {
-        font-size: 12px;
-        padding: 8px 4px;
-    }
-    
-    .semaforo-table tbody td,
-    .recaudos-table tbody td {
-        padding: 10px 4px;
-    }
-    
-    .campo-texto-container h4 {
-        font-size: 13px;
-    }
-    
-    .recaudo-row h4 {
-        font-size: 12px;
-    }
-    
-    .color-option {
-        width: 25px;
-        height: 25px;
-    }
-}
-
-@media (max-width: 480px) {
-    .panel-heading {
-        padding: 10px 15px;
-    }
-    
-    .panel-title {
-        font-size: 14px;
-    }
-    
-    .info-label {
-        font-size: 11px;
-    }
-    
-    .info-value {
-        font-size: 12px;
-    }
-}
-
-/* Badges de estado para panel "Otros" */
-.panel-status-badge {
-    padding: 5px 12px;
-    border-radius: 4px;
-    font-size: 13px;
-    color: white;
-}
-
-.panel-status-badge .status-text {
-    font-weight: bold;
-}
-
-.estado-campo {
-    text-align: center;
-    vertical-align: middle;
-}
-
-.estado-badge {
-    padding: 4px 10px;
-    border-radius: 3px;
-    font-size: 11px;
-    font-weight: 600;
-    min-width: 70px;
-    display: inline-block;
-}
-
-.estado-pendiente {
-    background-color: #95a5a6;
-    color: white;
-}
-
-.estado-modificar {
-    background-color: #e74c3c;
-    color: white;
-}
-
-.estado-revisar {
-    background-color: #f39c12;
-    color: white;
-}
-
-.estado-adecuado {
-    background-color: #27ae60;
-    color: white;
-}
-
-/* Botón para eliminar recaudos */
-.btn-eliminar-recaudo {
-    background: none;
-    border: none;
-    color: #e74c3c;
-    cursor: pointer;
-    font-size: 16px;
-    padding: 5px;
-    transition: all 0.2s ease;
-}
-
-.btn-eliminar-recaudo:hover {
-    color: #c0392b;
-    transform: scale(1.2);
-}
-
-/* Panel para agregar recaudos */
-.agregar-recaudo-panel .panel-default {
-    border: 1px solid #ddd;
-    border-radius: 6px;
-}
-
-.agregar-recaudo-panel .panel-heading {
-    background-color: #f8f9fa;
-    padding: 10px 15px;
-    border-bottom: 1px solid #ddd;
-}
-
-.agregar-recaudo-panel .panel-title {
-    font-size: 14px;
-    color: #495057;
-    margin: 0;
-}
-
-.agregar-recaudo-panel .panel-body {
-    padding: 15px;
-}
-
-.btn-agregar-recaudo {
-    width: 100%;
-}
-
-/* Columna para botón eliminar en recaudos */
-.recaudos-table td:last-child {
-    width: 50px;
-    text-align: center;
-}
-</style>
+<!-- Modal para crear nuevo recaudo -->
+<div class="modal fade" id="modalCrearRecaudo" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title"><i class="fas fa-plus-circle"></i> <span id="modalTitulo">Crear Nuevo Recaudo</span></h4>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Nombre del Recaudo *</label>
+                    <input type="text" id="nombreRecaudo" class="form-control" placeholder="Ingrese el nombre del recaudo">
+                </div>
+                <div class="form-group">
+                    <label>Descripción</label>
+                    <textarea id="descripcionRecaudo" class="form-control" rows="3" placeholder="Ingrese una descripción (opcional)"></textarea>
+                </div>
+                <input type="hidden" id="tipoRecaudoModal" value="">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnGuardarRecaudo">
+                    <i class="fas fa-save"></i> Guardar Recaudo
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

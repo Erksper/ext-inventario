@@ -341,4 +341,97 @@ class InvPropiedades extends Record
             ];
         }
     }
+
+    public function getActionGetRecaudosGuardados(Request $request): array
+    {
+        $propiedadId = $request->getQueryParam('propiedadId');
+        $tipo = $request->getQueryParam('tipo');
+        
+        if (!$propiedadId || !$tipo) {
+            return [
+                'success' => false,
+                'error' => 'propiedadId y tipo son requeridos'
+            ];
+        }
+        
+        $entityManager = $this->getContainer()->get('entityManager');
+        
+        try {
+            // Buscar el inventario de la propiedad
+            $inventario = $entityManager->getRepository('InvPropiedades')
+                ->where([
+                    'idPropiedadId' => $propiedadId,
+                    'deleted' => false
+                ])
+                ->findOne();
+            
+            $recaudos = [];
+            $esPorDefecto = false;
+            
+            if ($inventario) {
+                // Buscar recaudos relacionados a este inventario
+                $propiedadesRecaudos = $entityManager->getRepository('InvPropiedadesRecaudos')
+                    ->distinct()
+                    ->join('idRecaudos')
+                    ->where([
+                        'idInvPropiedadesId' => $inventario->get('id'),
+                        'deleted' => false
+                    ])
+                    ->find();
+                
+                // Filtrar por tipo
+                foreach ($propiedadesRecaudos as $propRecaudo) {
+                    $recaudo = $propRecaudo->get('idRecaudos');
+                    if ($recaudo && $recaudo->get('tipo') == $tipo) {
+                        $recaudos[] = [
+                            'id' => $recaudo->get('id'),
+                            'name' => $recaudo->get('name'),
+                            'descripcion' => $recaudo->get('descripcion'),
+                            'default' => $recaudo->get('default'),
+                            'tipo' => $recaudo->get('tipo'),
+                            'estado' => $propRecaudo->get('estado') // Estado guardado
+                        ];
+                    }
+                }
+            }
+            
+            // Si no hay recaudos guardados, cargar los por defecto
+            if (empty($recaudos)) {
+                $esPorDefecto = true;
+                
+                $recaudosDefault = $entityManager->getRepository('InvRecaudos')
+                    ->where([
+                        'tipo' => $tipo,
+                        'default' => true,
+                        'deleted' => false
+                    ])
+                    ->find();
+                
+                foreach ($recaudosDefault as $recaudo) {
+                    $recaudos[] = [
+                        'id' => $recaudo->get('id'),
+                        'name' => $recaudo->get('name'),
+                        'descripcion' => $recaudo->get('descripcion'),
+                        'default' => true,
+                        'tipo' => $recaudo->get('tipo'),
+                        'estado' => 'Modificar' // Estado por defecto
+                    ];
+                }
+            }
+            
+            return [
+                'success' => true,
+                'data' => [
+                    'recaudos' => $recaudos,
+                    'esPorDefecto' => $esPorDefecto
+                ]
+            ];
+            
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'error' => 'Error al cargar recaudos guardados: ' . $e->getMessage()
+            ];
+        }
+    }
 }

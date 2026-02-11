@@ -17,18 +17,37 @@ define('inventario:lib/init', [], function () {
         }
     }, true);
     
-    // Cargar estilos CSS
-    var link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.type = 'text/css';
-    link.href = 'client/custom/modules/inventario/res/styles/inv-propiedades.css';
-    document.head.appendChild(link);
+    // Cargar estilos CSS para el módulo
+    var cargarCSS = function() {
+        // Verificar si ya se cargó el CSS
+        if (document.getElementById('inventario-css')) {
+            return;
+        }
+        
+        var link = document.createElement('link');
+        link.id = 'inventario-css';
+        link.rel = 'stylesheet';
+        link.type = 'text/css';
+        link.href = 'client/custom/modules/inventario/res/styles/inv-propiedades.css';
+        document.head.appendChild(link);
+        
+        console.log('CSS del módulo Inventario cargado');
+    };
     
-    // Asegurar que las vistas estén disponibles
+    // Cargar CSS inmediatamente
+    cargarCSS();
+    
+    // También cargar cuando se cargue la vista de propiedad
     Espo.loader.require([
         'inventario:views/inventario/propiedad',
         'inventario:views/list'
     ], function () {
         console.log('Vistas del módulo Inventario cargadas');
+        // Asegurar que el CSS está cargado
+        cargarCSS();
     });
+    
+    return {
+        cargarCSS: cargarCSS
+    };
 });
