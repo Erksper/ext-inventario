@@ -23,7 +23,6 @@ class InvPropiedades extends Base
         
         $entityManager = $this->getContainer()->get('entityManager');
         
-        // Buscar propiedad
         $propiedad = $entityManager->getEntity('Propiedades', $propiedadId);
         if (!$propiedad) {
             return [
@@ -32,12 +31,10 @@ class InvPropiedades extends Base
             ];
         }
         
-        // Buscar inventario existente
         $inventario = $entityManager->getRepository('InvPropiedades')
             ->where(['idPropiedadId' => $propiedadId, 'deleted' => false])
             ->findOne();
         
-        // Si no existe, crear nuevo
         if (!$inventario) {
             $inventario = $entityManager->getEntity('InvPropiedades');
             $inventario->set([
@@ -86,10 +83,6 @@ class InvPropiedades extends Base
         ];
     }
     
-    /**
-     * Obtener sub buyers asociados a una propiedad
-     * CORREGIDO: Sin usar isRelationExists()
-     */
     public function getActionGetSubBuyersPropiedad(Request $request): array
     {
         $inventarioId = $request->getQueryParam('inventarioId');
@@ -115,7 +108,6 @@ class InvPropiedades extends Base
             $subBuyers = [];
             
             try {
-                // Intentar obtener relación usando getRelation
                 $repository = $entityManager->getRepository('InvPropiedades');
                 $subBuyerCollection = $repository->getRelation($inventario, 'subBuyers')->find();
                 
@@ -127,7 +119,6 @@ class InvPropiedades extends Base
                     ];
                 }
             } catch (\Exception $e) {
-                // Si falla getRelation, intentar con query directo a tabla intermedia
                 $pdo = $entityManager->getPDO();
                 
                 $stmt = $pdo->prepare("
@@ -167,9 +158,6 @@ class InvPropiedades extends Base
         }
     }
     
-    /**
-     * Obtener recaudos guardados para una propiedad según tipo
-     */
     public function getActionGetRecaudosGuardados(Request $request): array
     {
         $propiedadId = $request->getQueryParam('propiedadId');
@@ -184,7 +172,6 @@ class InvPropiedades extends Base
         
         $entityManager = $this->getContainer()->get('entityManager');
         
-        // Buscar inventario
         $inventario = $entityManager->getRepository('InvPropiedades')
             ->where(['idPropiedadId' => $propiedadId, 'deleted' => false])
             ->findOne();
@@ -196,7 +183,6 @@ class InvPropiedades extends Base
             ];
         }
         
-        // Buscar recaudos guardados en InvPropiedadesRecaudos
         $recaudosGuardados = $entityManager->getRepository('InvPropiedadesRecaudos')
             ->join('idRecaudos')
             ->where([
@@ -227,7 +213,6 @@ class InvPropiedades extends Base
             }
         }
         
-        // Si NO hay recaudos guardados, cargar los por defecto
         if (count($recaudos) === 0) {
             $recaudosDefault = $entityManager->getRepository('InvRecaudos')
                 ->where([
@@ -260,9 +245,6 @@ class InvPropiedades extends Base
         ];
     }
     
-    /**
-     * Obtener todos los recaudos disponibles por tipo
-     */
     public function getActionGetRecaudosByTipo(Request $request): array
     {
         $tipo = $request->getQueryParam('tipo');
@@ -301,9 +283,6 @@ class InvPropiedades extends Base
         ];
     }
     
-    /**
-     * Obtener sub buyers disponibles por tipo de buyer
-     */
     public function getActionGetSubBuyersByBuyer(Request $request): array
     {
         $buyer = $request->getQueryParam('buyer');
@@ -351,11 +330,18 @@ class InvPropiedades extends Base
     }
     
     /**
-     * Guardar inventario completo
+     * Guardar inventario completo - VERSIÓN 3 INCREMENTAL
      */
     public function postActionSave(Request $request): array
     {
         $data = $request->getParsedBody();
+        
+        if (is_object($data)) {
+            $data = json_decode(json_encode($data), true);
+        }
+        
+        $GLOBALS['log']->info('=== SAVE V3 INICIADO ===');
+        
         $inventarioId = $data['inventarioId'] ?? null;
         
         if (!$inventarioId) {
@@ -369,6 +355,15 @@ class InvPropiedades extends Base
             throw new BadRequest('Inventario no encontrado');
         }
         
+        // Calcular notas
+        $notaLegal = $this->calcularNota($data, 'legal');
+        $notaMercadeo = $this->calcularNota($data, 'mercadeo');
+        $notaPrecio = $this->mapearNotaOtros($data['precio'] ?? 'En rango');
+        $notaExclusiva = $this->mapearNotaOtros($data['exclusividad'] ?? 'Sin exclusividad');
+        $notaUbicacion = $this->mapearNotaOtros($data['ubicacion'] ?? 'Ubicación no atractiva');
+        
+        $GLOBALS['log']->info('📊 Notas - Legal: ' . $notaLegal . ', Mercadeo: ' . $notaMercadeo);
+        
         // Actualizar campos básicos
         $updates = [
             'tipoPersona' => $data['tipoPersona'] ?? $inventario->get('tipoPersona'),
@@ -380,41 +375,393 @@ class InvPropiedades extends Base
             'apoderado' => isset($data['apoderado']) ? 
                 ($data['apoderado'] === 'true' || $data['apoderado'] === true) : 
                 $inventario->get('apoderado'),
-            'estatusPropiedad' => $data['estatusPropiedad'] ?? 'Rojo'
+            'estatusPropiedad' => $data['estatusPropiedad'] ?? 'Rojo',
+            'notaLegal' => $notaLegal,
+            'notaMercadeo' => $notaMercadeo,
+            'notaPrecio' => $notaPrecio,
+            'notaExclusiva' => $notaExclusiva,
+            'notaUbicacion' => $notaUbicacion
         ];
         
         $inventario->set($updates);
         $entityManager->saveEntity($inventario);
         
-        // Guardar sub buyers (linkMultiple)
+        $GLOBALS['log']->info('✅ Inventario básico guardado');
+        
+        // Guardar sub buyers
         if (isset($data['subBuyers']) && is_array($data['subBuyers'])) {
             $this->guardarSubBuyers($inventario, $data['subBuyers']);
+            $GLOBALS['log']->info('✅ Sub buyers guardados');
         }
         
-        // Guardar recaudos legales
-        if (isset($data['recaudosLegal']) && is_array($data['recaudosLegal'])) {
-            $this->guardarRecaudos($inventario, $data['recaudosLegal'], $data['valoresRecaudosLegal'] ?? []);
+        // Guardar recaudos - INCREMENTAL
+        $totalGuardados = 0;
+        $totalActualizados = 0;
+        $totalEliminados = 0;
+        
+        if (isset($data['recaudosLegal'])) {
+            $result = $this->guardarRecaudosIncremental(
+                $inventario, 
+                $data['recaudosLegal'], 
+                $data['valoresRecaudosLegal'] ?? []
+            );
+            $totalGuardados += $result['creados'];
+            $totalActualizados += $result['actualizados'];
+            $totalEliminados += $result['eliminados'];
+            $GLOBALS['log']->info('✅ Legal - Creados: ' . $result['creados'] . ', Actualizados: ' . $result['actualizados'] . ', Eliminados: ' . $result['eliminados']);
         }
         
-        // Guardar recaudos mercadeo
-        if (isset($data['recaudosMercadeo']) && is_array($data['recaudosMercadeo'])) {
-            $this->guardarRecaudos($inventario, $data['recaudosMercadeo'], $data['valoresRecaudosMercadeo'] ?? []);
+        if (isset($data['recaudosMercadeo'])) {
+            $result = $this->guardarRecaudosIncremental(
+                $inventario, 
+                $data['recaudosMercadeo'], 
+                $data['valoresRecaudosMercadeo'] ?? []
+            );
+            $totalGuardados += $result['creados'];
+            $totalActualizados += $result['actualizados'];
+            $totalEliminados += $result['eliminados'];
+            $GLOBALS['log']->info('✅ Mercadeo - Creados: ' . $result['creados'] . ', Actualizados: ' . $result['actualizados'] . ', Eliminados: ' . $result['eliminados']);
         }
         
-        // Guardar recaudos apoderado
-        if (isset($data['recaudosApoderado']) && is_array($data['recaudosApoderado'])) {
-            $this->guardarRecaudos($inventario, $data['recaudosApoderado'], $data['valoresRecaudosApoderado'] ?? []);
+        if (isset($data['recaudosApoderado'])) {
+            $result = $this->guardarRecaudosIncremental(
+                $inventario, 
+                $data['recaudosApoderado'], 
+                $data['valoresRecaudosApoderado'] ?? []
+            );
+            $totalGuardados += $result['creados'];
+            $totalActualizados += $result['actualizados'];
+            $totalEliminados += $result['eliminados'];
+            $GLOBALS['log']->info('✅ Apoderado - Creados: ' . $result['creados'] . ', Actualizados: ' . $result['actualizados'] . ', Eliminados: ' . $result['eliminados']);
         }
+        
+        $GLOBALS['log']->info('=== GUARDADO COMPLETADO ===');
+        $GLOBALS['log']->info('Total - Creados: ' . $totalGuardados . ', Actualizados: ' . $totalActualizados . ', Eliminados: ' . $totalEliminados);
         
         return [
             'success' => true,
-            'message' => 'Inventario guardado exitosamente'
+            'message' => 'Inventario guardado exitosamente',
+            'stats' => [
+                'creados' => $totalGuardados,
+                'actualizados' => $totalActualizados,
+                'eliminados' => $totalEliminados
+            ]
         ];
+    }
+
+    public function getActionGetRecaudosApoderado(Request $request): array
+    {
+        $inventarioId = $request->getQueryParam('inventarioId');
+        
+        if (!$inventarioId) {
+            return [
+                'success' => false,
+                'error' => 'inventarioId es requerido'
+            ];
+        }
+        
+        try {
+            $entityManager = $this->getContainer()->get('entityManager');
+            
+            $inventario = $entityManager->getEntity('InvPropiedades', $inventarioId);
+            if (!$inventario) {
+                return [
+                    'success' => false,
+                    'error' => 'Inventario no encontrado'
+                ];
+            }
+            
+            // Buscar recaudos guardados de tipo apoderado
+            $recaudosGuardados = $entityManager->getRepository('InvPropiedadesRecaudos')
+                ->join('idRecaudos')
+                ->where([
+                    'idInvPropiedadesId' => $inventario->get('id'),
+                    'idRecaudos.tipo' => 'Apoderado',
+                    'deleted' => false
+                ])
+                ->find();
+            
+            $recaudos = [];
+            
+            foreach ($recaudosGuardados as $rel) {
+                $recaudo = $rel->get('idRecaudos');
+                if ($recaudo) {
+                    $recaudos[] = [
+                        'id' => $recaudo->get('id'),
+                        'name' => $recaudo->get('name'),
+                        'estado' => $rel->get('estado') ?? 'Modificar/No Tiene'
+                    ];
+                }
+            }
+            
+            return [
+                'success' => true,
+                'data' => [
+                    'recaudos' => $recaudos
+                ]
+            ];
+            
+        } catch (\Exception $e) {
+            $GLOBALS['log']->error('Error en getRecaudosApoderado: ' . $e->getMessage());
+            
+            return [
+                'success' => false,
+                'error' => 'Error: ' . $e->getMessage()
+            ];
+        }
     }
     
     /**
-     * Guardar sub buyers usando linkMultiple
-     * CORREGIDO: Sin usar isRelationExists()
+     * Guardar recaudos INCREMENTALMENTE - NUEVA VERSIÓN
+     */
+    private function guardarRecaudosIncremental($inventario, $recaudosArray, $valoresArray): array
+    {
+        $entityManager = $this->getContainer()->get('entityManager');
+        $inventarioId = $inventario->get('id');
+        
+        // Convertir a arrays
+        if (is_object($recaudosArray)) {
+            $recaudosArray = json_decode(json_encode($recaudosArray), true);
+        }
+        if (is_object($valoresArray)) {
+            $valoresArray = json_decode(json_encode($valoresArray), true);
+        }
+        
+        if (!is_array($recaudosArray) || count($recaudosArray) === 0) {
+            $GLOBALS['log']->info('⚠️ Array vacío, saltando guardado');
+            return ['creados' => 0, 'actualizados' => 0, 'eliminados' => 0];
+        }
+        
+        $creados = 0;
+        $actualizados = 0;
+        $eliminados = 0;
+        
+        // PASO 1: Extraer IDs de recaudos actuales
+        $recaudosIdsActuales = [];
+        foreach ($recaudosArray as $recaudo) {
+            if (is_object($recaudo)) {
+                $recaudo = json_decode(json_encode($recaudo), true);
+            }
+            if (isset($recaudo['recaudoId'])) {
+                $recaudosIdsActuales[] = strval($recaudo['recaudoId']);
+            }
+        }
+        
+        if (count($recaudosIdsActuales) === 0) {
+            $GLOBALS['log']->info('⚠️ No hay IDs para guardar');
+            return ['creados' => 0, 'actualizados' => 0, 'eliminados' => 0];
+        }
+        
+        $GLOBALS['log']->info('📋 IDs a guardar: ' . json_encode($recaudosIdsActuales));
+        
+        // PASO 2: Determinar el TIPO de recaudos (Legal/Mercadeo/Apoderado)
+        // Obtener el tipo del primer recaudo para saber qué grupo es
+        $primerRecaudoId = $recaudosIdsActuales[0];
+        $primerRecaudo = $entityManager->getEntity('InvRecaudos', $primerRecaudoId);
+        
+        if (!$primerRecaudo) {
+            $GLOBALS['log']->error('❌ No se pudo determinar tipo de recaudo');
+            return ['creados' => 0, 'actualizados' => 0, 'eliminados' => 0];
+        }
+        
+        $tipoGrupo = $primerRecaudo->get('tipo');
+        $GLOBALS['log']->info('🏷️ Tipo de grupo: ' . $tipoGrupo);
+        
+        // PASO 3: Obtener SOLO los recaudos de ESTE TIPO en BD
+        $pdo = $entityManager->getPDO();
+        
+        $stmt = $pdo->prepare("
+            SELECT pr.id, pr.id_recaudos_id, pr.estado, pr.deleted
+            FROM inv_propiedades_recaudos pr
+            INNER JOIN inv_recaudos r ON pr.id_recaudos_id = r.id
+            WHERE pr.id_inv_propiedades_id = :invId
+            AND r.tipo = :tipo
+            AND pr.deleted = 0
+        ");
+        
+        $stmt->execute([
+            'invId' => $inventarioId,
+            'tipo' => $tipoGrupo
+        ]);
+        
+        $recaudosExistentes = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        
+        $idsExistentesEnBD = [];
+        foreach ($recaudosExistentes as $rel) {
+            $idsExistentesEnBD[] = strval($rel['id_recaudos_id']);
+        }
+        
+        $GLOBALS['log']->info('💾 IDs en BD (tipo=' . $tipoGrupo . ', deleted=0): ' . json_encode($idsExistentesEnBD));
+        
+        // PASO 4: Marcar como eliminados los de ESTE TIPO que ya NO están
+        foreach ($recaudosExistentes as $rel) {
+            $recaudoIdEnBD = strval($rel['id_recaudos_id']);
+            
+            if (!in_array($recaudoIdEnBD, $recaudosIdsActuales, true)) {
+                // Este recaudo ya no está → eliminarlo
+                $relacion = $entityManager->getEntity('InvPropiedadesRecaudos', $rel['id']);
+                if ($relacion) {
+                    $relacion->set('deleted', true);
+                    $entityManager->saveEntity($relacion);
+                    $eliminados++;
+                    $GLOBALS['log']->info('🗑️ Eliminado: ' . $recaudoIdEnBD . ' (tipo: ' . $tipoGrupo . ')');
+                }
+            }
+        }
+        
+        // PASO 5: Crear o actualizar los recaudos actuales
+        foreach ($recaudosArray as $recaudoData) {
+            if (is_object($recaudoData)) {
+                $recaudoData = json_decode(json_encode($recaudoData), true);
+            }
+            
+            if (!is_array($recaudoData)) continue;
+            
+            $recaudoId = $recaudoData['recaudoId'] ?? null;
+            if (!$recaudoId) continue;
+            
+            $recaudoIdStr = strval($recaudoId);
+            
+            $estado = isset($valoresArray[$recaudoIdStr]) ? 
+                    $valoresArray[$recaudoIdStr] : 
+                    ($recaudoData['estado'] ?? 'Modificar/No Tiene');
+            
+            // Buscar si ya existe
+            $relacion = $entityManager->getRepository('InvPropiedadesRecaudos')
+                ->where([
+                    'idInvPropiedadesId' => $inventarioId,
+                    'idRecaudosId' => $recaudoIdStr
+                ])
+                ->findOne();
+            
+            if ($relacion) {
+                // ACTUALIZAR
+                $estadoAnterior = $relacion->get('estado');
+                $wasDeleted = $relacion->get('deleted');
+                
+                if ($estadoAnterior !== $estado || $wasDeleted) {
+                    $relacion->set('estado', $estado);
+                    $relacion->set('deleted', false);
+                    $entityManager->saveEntity($relacion);
+                    $actualizados++;
+                    
+                    if ($wasDeleted) {
+                        $GLOBALS['log']->info('♻️ Reactivado: ' . $recaudoIdStr . ' → ' . $estado);
+                    } else {
+                        $GLOBALS['log']->info('🔄 Actualizado: ' . $recaudoIdStr . ' (' . $estadoAnterior . ' → ' . $estado . ')');
+                    }
+                } else {
+                    $GLOBALS['log']->info('✓ Sin cambios: ' . $recaudoIdStr);
+                }
+            } else {
+                // CREAR
+                $relacion = $entityManager->getEntity('InvPropiedadesRecaudos');
+                $relacion->set([
+                    'idInvPropiedadesId' => $inventarioId,
+                    'idRecaudosId' => $recaudoIdStr,
+                    'estado' => $estado,
+                    'deleted' => false
+                ]);
+                $entityManager->saveEntity($relacion);
+                $creados++;
+                $GLOBALS['log']->info('➕ Creado: ' . $recaudoIdStr . ' (' . $estado . ', tipo: ' . $tipoGrupo . ')');
+            }
+        }
+        
+        return [
+            'creados' => $creados,
+            'actualizados' => $actualizados,
+            'eliminados' => $eliminados
+        ];
+    }
+
+    
+    /**
+     * Calcular nota según porcentajes
+     */
+    private function calcularNota($data, $tipo): string
+    {
+        $recaudos = [];
+        $valores = [];
+        
+        if ($tipo === 'legal') {
+            $recaudos = $data['recaudosLegal'] ?? [];
+            $valores = $data['valoresRecaudosLegal'] ?? [];
+        } else if ($tipo === 'mercadeo') {
+            $recaudos = $data['recaudosMercadeo'] ?? [];
+            $valores = $data['valoresRecaudosMercadeo'] ?? [];
+        }
+        
+        if (is_object($recaudos)) {
+            $recaudos = json_decode(json_encode($recaudos), true);
+        }
+        if (is_object($valores)) {
+            $valores = json_decode(json_encode($valores), true);
+        }
+        
+        if (!is_array($recaudos) || count($recaudos) === 0) {
+            return 'Modificar';
+        }
+        
+        $totalRecaudos = count($recaudos);
+        $completosRecaudos = 0;
+        
+        foreach ($recaudos as $recaudo) {
+            if (is_object($recaudo)) {
+                $recaudo = json_decode(json_encode($recaudo), true);
+            }
+            
+            $recaudoId = $recaudo['recaudoId'] ?? null;
+            if (!$recaudoId) continue;
+            
+            $estado = $valores[$recaudoId] ?? ($recaudo['estado'] ?? 'Modificar/No Tiene');
+            
+            if ($estado === 'Adecuado') {
+                $completosRecaudos++;
+            }
+        }
+        
+        $porcentaje = ($totalRecaudos > 0) ? round(($completosRecaudos / $totalRecaudos) * 100) : 0;
+        
+        if ($tipo === 'legal') {
+            if ($porcentaje >= 90) return 'Adecuado';
+            if ($porcentaje >= 80) return 'Revisar';
+            return 'Modificar';
+        } else if ($tipo === 'mercadeo') {
+            if ($porcentaje >= 90) return 'Adecuado';
+            if ($porcentaje >= 70) return 'Revisar';
+            return 'Modificar';
+        }
+        
+        return 'Modificar';
+    }
+    
+    /**
+     * Mapear valores de "Otros" a notas
+     */
+    private function mapearNotaOtros($valor): string
+    {
+        $verdes = [
+            'Exclusividad pura o total con contrato firmado',
+            'En rango',
+            'Ubicación atractiva',
+            'Alta demanda'
+        ];
+        
+        $amarillos = [
+            'Exclusividad interna de CENTURY con contrato firmado',
+            'Cercano al rango de precio',
+            'Ubicación medianamente atractiva',
+            'Media demanda'
+        ];
+        
+        if (in_array($valor, $verdes)) return 'Adecuado';
+        if (in_array($valor, $amarillos)) return 'Revisar';
+        return 'Modificar';
+    }
+    
+    /**
+     * Guardar sub buyers
      */
     private function guardarSubBuyers($inventario, $subBuyersIds)
     {
@@ -422,31 +769,26 @@ class InvPropiedades extends Base
         $repository = $entityManager->getRepository('InvPropiedades');
         
         try {
-            // Obtener sub buyers actuales
             $actuales = $repository->getRelation($inventario, 'subBuyers')->find();
             $actualesIds = [];
             foreach ($actuales as $sb) {
                 $actualesIds[] = $sb->get('id');
             }
             
-            // Eliminar los que ya no están
             foreach ($actualesIds as $actualId) {
                 if (!in_array($actualId, $subBuyersIds)) {
                     $repository->unrelate($inventario, 'subBuyers', $actualId);
                 }
             }
             
-            // Agregar los nuevos
             foreach ($subBuyersIds as $newId) {
                 if (!in_array($newId, $actualesIds)) {
                     $repository->relate($inventario, 'subBuyers', $newId);
                 }
             }
         } catch (\Exception $e) {
-            // Si falla con relación, usar método directo de BD
             $pdo = $entityManager->getPDO();
             
-            // Eliminar relaciones existentes
             $stmt = $pdo->prepare("
                 UPDATE inv_propiedades_inv_sub_buyer 
                 SET deleted = 1 
@@ -454,7 +796,6 @@ class InvPropiedades extends Base
             ");
             $stmt->execute(['invId' => $inventario->get('id')]);
             
-            // Insertar nuevas relaciones
             foreach ($subBuyersIds as $subBuyerId) {
                 $stmt = $pdo->prepare("
                     INSERT INTO inv_propiedades_inv_sub_buyer 
@@ -466,69 +807,6 @@ class InvPropiedades extends Base
                     'invId' => $inventario->get('id'),
                     'subBuyerId' => $subBuyerId
                 ]);
-            }
-        }
-    }
-    
-    /**
-     * Guardar recaudos en InvPropiedadesRecaudos
-     */
-    private function guardarRecaudos($inventario, $recaudosArray, $valoresArray)
-    {
-        $entityManager = $this->getContainer()->get('entityManager');
-        $inventarioId = $inventario->get('id');
-        
-        // Eliminar recaudos existentes de este inventario
-        $existentes = $entityManager->getRepository('InvPropiedadesRecaudos')
-            ->where(['idInvPropiedadesId' => $inventarioId])
-            ->find();
-        
-        foreach ($existentes as $existente) {
-            $entityManager->removeEntity($existente);
-        }
-        
-        // IMPORTANTE: Verificar que recaudosArray es array
-        if (!is_array($recaudosArray)) {
-            $GLOBALS['log']->warning('guardarRecaudos recibió no-array: ' . gettype($recaudosArray));
-            return;
-        }
-        
-        // Crear nuevos registros
-        foreach ($recaudosArray as $recaudoData) {
-            // CORREGIDO: Verificar si es array u objeto
-            if (is_object($recaudoData)) {
-                // Convertir objeto a array
-                $recaudoData = (array) $recaudoData;
-            }
-            
-            if (!is_array($recaudoData)) {
-                continue;
-            }
-            
-            $recaudoId = $recaudoData['recaudoId'] ?? null;
-            
-            // CORREGIDO: Verificar que valoresArray sea array
-            if (is_object($valoresArray)) {
-                $valoresArray = (array) $valoresArray;
-            }
-            
-            $estado = isset($valoresArray[$recaudoId]) ? 
-                    $valoresArray[$recaudoId] : 
-                    ($recaudoData['estado'] ?? 'Modificar/No Tiene');
-            
-            if (!$recaudoId) continue;
-            
-            try {
-                $relacion = $entityManager->getEntity('InvPropiedadesRecaudos');
-                $relacion->set([
-                    'idInvPropiedadesId' => $inventarioId,
-                    'idRecaudosId' => $recaudoId,
-                    'estado' => $estado
-                ]);
-                
-                $entityManager->saveEntity($relacion);
-            } catch (\Exception $e) {
-                $GLOBALS['log']->error('Error guardando recaudo ' . $recaudoId . ': ' . $e->getMessage());
             }
         }
     }

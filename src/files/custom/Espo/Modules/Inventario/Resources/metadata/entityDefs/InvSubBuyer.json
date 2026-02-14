@@ -12,11 +12,6 @@
             "default": "Comprador",
             "required": true
         },
-        "invPropiedades": {
-            "type": "linkMultiple",
-            "entity": "InvPropiedades",
-            "view": "views/fields/link-multiple"
-        },
         "deleted": {
             "type": "bool",
             "default": false
@@ -39,12 +34,6 @@
         }
     },
     "links": {
-        "invPropiedades": {
-            "type": "hasMany",
-            "entity": "InvPropiedades",
-            "foreign": "subBuyers",
-            "relationName": "invPropiedadesInvSubBuyer"
-        },
         "createdBy": {
             "type": "belongsTo",
             "entity": "User"

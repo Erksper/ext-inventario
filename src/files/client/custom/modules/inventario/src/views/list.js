@@ -404,12 +404,54 @@ define('inventario:views/list', [
             return dias + ' días';
         },
 
-        obtenerColorNota: function(valor) {
-            if (!valor) return '#95a5a6'; // Gris si no hay valor
-            if (valor === 'Adecuado') return '#27ae60'; // Verde
-            if (valor === 'Revisar') return '#f39c12'; // Amarillo
-            if (valor === 'Modificar') return '#e74c3c'; // Rojo
-            return '#95a5a6'; // Gris por defecto
+        obtenerColorEstatus: function(estatus) {
+            if (!estatus) return '#95a5a6'; // Gris
+            if (estatus === 'Verde') return '#27ae60';
+            if (estatus === 'Amarillo') return '#f39c12';
+            if (estatus === 'Rojo') return '#e74c3c';
+            return '#95a5a6';
+        },
+
+        obtenerColorDemanda: function(demanda) {
+            if (!demanda) return '#95a5a6';
+            if (demanda === 'Alta demanda') return '#27ae60';
+            if (demanda === 'Media demanda') return '#f39c12';
+            if (demanda === 'Baja demanda') return '#e74c3c';
+            return '#95a5a6';
+        },
+
+        // NUEVA FUNCIÓN: Cargar recaudos de apoderado
+        cargarRecaudosApoderado: function(inventarioId, $cell) {
+            Espo.Ajax.getRequest('InvPropiedades/action/getRecaudosApoderado', {
+                inventarioId: inventarioId
+            })
+                .then(function(response) {
+                    if (response.success && response.data && response.data.recaudos) {
+                        var recaudos = response.data.recaudos;
+                        
+                        if (recaudos.length === 0) {
+                            $cell.html('<span style="color: #999; font-size: 12px;">Sin recaudos</span>');
+                            return;
+                        }
+                        
+                        var items = [];
+                        recaudos.forEach(function(recaudo) {
+                            var tiene = recaudo.estado === 'Adecuado';
+                            var texto = (tiene ? 'Tiene' : 'No tiene') + ' ' + recaudo.name;
+                            var color = tiene ? '#27ae60' : '#e74c3c';
+                            
+                            items.push('<div style="color: ' + color + '; font-size: 11px; line-height: 1.4; margin-bottom: 2px;">' + texto + '</div>');
+                        });
+                        
+                        $cell.html(items.join(''));
+                    } else {
+                        $cell.html('<span style="color: #999; font-size: 12px;">Sin recaudos</span>');
+                    }
+                })
+                .catch(function(error) {
+                    console.error('Error cargando recaudos apoderado:', error);
+                    $cell.html('<span style="color: #e74c3c; font-size: 12px;">Error</span>');
+                });
         },
 
         renderizarTabla: function () {
@@ -423,18 +465,16 @@ define('inventario:views/list', [
                 return;
             }
             
+            // NUEVA ESTRUCTURA DE COLUMNAS
             var html = '<div class="tabla-propiedades"><table><thead><tr>';
             html += '<th style="width: 100px;">Días en el mercado</th>';
             html += '<th style="width: 250px;">Dirección</th>';
             html += '<th style="width: 150px;">Asesor</th>';
             html += '<th style="width: 100px;">Tipo</th>';
             html += '<th style="width: 100px;">Operación</th>';
-            html += '<th style="width: 70px;">Legal</th>';
-            html += '<th style="width: 70px;">Mercadeo</th>';
-            html += '<th style="width: 70px;">Precio</th>';
-            html += '<th style="width: 70px;">Exclusiva</th>';
-            html += '<th style="width: 70px;">Ubicación</th>';
-            html += '<th style="width: 70px;">Estado</th>';
+            html += '<th style="width: 90px;">Estatus</th>';  // MOVIDO
+            html += '<th style="width: 90px;">Demanda</th>';  // NUEVO
+            html += '<th style="width: 250px;">Apoderado</th>';  // NUEVO
             html += '<th style="width: 100px;">Acciones</th>';
             html += '</tr></thead><tbody>';
             
@@ -459,23 +499,13 @@ define('inventario:views/list', [
                 // Obtener datos de InvPropiedades
                 var inventario = this.inventarioData[propiedad.id] || null;
                 
-                // Colores para las notas
-                var colorLegal = this.obtenerColorNota(inventario ? inventario.notaLegal : null);
-                var colorMercadeo = this.obtenerColorNota(inventario ? inventario.notaMercadeo : null);
-                var colorPrecio = this.obtenerColorNota(inventario ? inventario.notaPrecio : null);
-                var colorExclusiva = this.obtenerColorNota(inventario ? inventario.notaExclusiva : null);
-                var colorUbicacion = this.obtenerColorNota(inventario ? inventario.notaUbicacion : null);
+                // Estatus de la propiedad
+                var estatus = inventario ? inventario.estatusPropiedad : 'Sin calcular';
+                var colorEstatus = this.obtenerColorEstatus(estatus);
                 
-                // Textos para las notas (quitando "nota")
-                var textoLegal = inventario && inventario.notaLegal ? inventario.notaLegal : 'Sin inv.';
-                var textoMercadeo = inventario && inventario.notaMercadeo ? inventario.notaMercadeo : 'Sin inv.';
-                var textoPrecio = inventario && inventario.notaPrecio ? inventario.notaPrecio : 'Sin inv.';
-                var textoExclusiva = inventario && inventario.notaExclusiva ? inventario.notaExclusiva : 'Sin inv.';
-                var textoUbicacion = inventario && inventario.notaUbicacion ? inventario.notaUbicacion : 'Sin inv.';
-                
-                // Estado de la propiedad (gris por ahora)
-                var colorEstado = '#95a5a6';
-                var textoEstado = 'Por calcular';
+                // Demanda
+                var demanda = inventario ? inventario.demanda : 'Sin definir';
+                var colorDemanda = this.obtenerColorDemanda(demanda);
                 
                 html += '<tr data-id="' + propiedad.id + '" style="cursor: pointer;">';
                 html += '<td style="font-size: 13px; font-weight: 600; text-align: center;">' + diasEnMercado + '</td>';
@@ -484,23 +514,19 @@ define('inventario:views/list', [
                 html += '<td style="font-size: 13px;">' + (propiedad.tipoPropiedad || '-') + '</td>';
                 html += '<td style="font-size: 13px;">' + (propiedad.tipoOperacion || '-') + '</td>';
                 
-                // Legal
-                html += '<td style="text-align: center;"><span class="badge" style="background: ' + colorLegal + '; color: white; font-size: 11px; padding: 4px 8px;" title="' + textoLegal + '">' + this.acortarTextoNota(textoLegal) + '</span></td>';
+                // Estatus
+                html += '<td style="text-align: center;"><span class="badge" style="background: ' + colorEstatus + '; color: white; font-size: 11px; padding: 5px 10px; border-radius: 4px;">' + estatus + '</span></td>';
                 
-                // Mercadeo
-                html += '<td style="text-align: center;"><span class="badge" style="background: ' + colorMercadeo + '; color: white; font-size: 11px; padding: 4px 8px;" title="' + textoMercadeo + '">' + this.acortarTextoNota(textoMercadeo) + '</span></td>';
+                // Demanda
+                html += '<td style="text-align: center;"><span class="badge" style="background: ' + colorDemanda + '; color: white; font-size: 11px; padding: 5px 10px; border-radius: 4px;">' + demanda + '</span></td>';
                 
-                // Precio
-                html += '<td style="text-align: center;"><span class="badge" style="background: ' + colorPrecio + '; color: white; font-size: 11px; padding: 4px 8px;" title="' + textoPrecio + '">' + this.acortarTextoNota(textoPrecio) + '</span></td>';
-                
-                // Exclusiva
-                html += '<td style="text-align: center;"><span class="badge" style="background: ' + colorExclusiva + '; color: white; font-size: 11px; padding: 4px 8px;" title="' + textoExclusiva + '">' + this.acortarTextoNota(textoExclusiva) + '</span></td>';
-                
-                // Ubicación
-                html += '<td style="text-align: center;"><span class="badge" style="background: ' + colorUbicacion + '; color: white; font-size: 11px; padding: 4px 8px;" title="' + textoUbicacion + '">' + this.acortarTextoNota(textoUbicacion) + '</span></td>';
-                
-                // Estado de la propiedad
-                html += '<td style="text-align: center;"><span class="badge" style="background: ' + colorEstado + '; color: white; font-size: 11px; padding: 4px 8px;" title="Estado de la propiedad">' + textoEstado + '</span></td>';
+                // Apoderado - se carga dinámicamente
+                var apoderadoCellId = 'apoderado-' + propiedad.id;
+                if (inventario && inventario.apoderado) {
+                    html += '<td id="' + apoderadoCellId + '" style="font-size: 12px; padding: 10px;"><span style="color: #999;">Cargando...</span></td>';
+                } else {
+                    html += '<td id="' + apoderadoCellId + '" style="font-size: 12px; padding: 10px;"><span style="color: #999;">Sin apoderado</span></td>';
+                }
                 
                 // Acciones
                 html += '<td><button class="btn btn-sm btn-view" data-id="' + propiedad.id + '" style="background: #B8A279; color: white; border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;"><i class="fas fa-eye"></i> Ver</button></td>';
@@ -511,6 +537,16 @@ define('inventario:views/list', [
             
             container.html(html);
             
+            // Cargar recaudos de apoderado dinámicamente
+            this.propiedadesFiltradas.forEach(function(propiedad) {
+                var inventario = this.inventarioData[propiedad.id] || null;
+                if (inventario && inventario.apoderado && inventario.id) {
+                    var $cell = container.find('#apoderado-' + propiedad.id);
+                    this.cargarRecaudosApoderado(inventario.id, $cell);
+                }
+            }.bind(this));
+            
+            // Event listeners
             container.find('tr[data-id]').on('click', function (e) {
                 if (!$(e.target).closest('button').length) {
                     var id = $(e.currentTarget).data('id');
@@ -525,18 +561,8 @@ define('inventario:views/list', [
             }.bind(this));
         },
 
-        acortarTextoNota: function(texto) {
-            if (!texto) return '-';
-            if (texto === 'Sin inv.') return 'Sin inv.';
-            if (texto === 'Modificar') return 'Modif.';
-            if (texto === 'Revisar') return 'Rev.';
-            if (texto === 'Adecuado') return 'Adec.';
-            return texto;
-        },
-
         verDetalle: function (propiedadId) {
             console.log('Navegando a detalle de propiedad ID:', propiedadId);
-            // Usar la ruta correcta con parámetro
             this.getRouter().navigate('#InvLista/propiedad/propiedadId=' + propiedadId, { trigger: true });
         }
     });

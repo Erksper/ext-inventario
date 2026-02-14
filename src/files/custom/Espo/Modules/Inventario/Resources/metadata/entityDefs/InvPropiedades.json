@@ -18,7 +18,7 @@
         },
         "buyer": {
             "type": "enum",
-            "options": ["Comprador", "Vendedor", "Arrendador", "Arrendatario"],
+            "options": ["Comprador", "Arrendatario"],
             "default": "Comprador"
         },
         "subBuyers": {

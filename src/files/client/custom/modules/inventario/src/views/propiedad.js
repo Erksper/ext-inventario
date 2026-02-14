@@ -21,6 +21,10 @@ define('inventario:views/propiedad', [
                 return;
             }
             
+            this.datosYaCargados = false;
+            this.cargandoDatos = false;  // NUEVO
+            this.vistaYaRenderizada = false;
+            
             this.inventarioId = null;
             this.inventarioData = null;
             this.propiedadData = null;
@@ -58,18 +62,59 @@ define('inventario:views/propiedad', [
                 this.cargasPendientes = 0;
                 this.datosCompletamenteCargados = true;
                 
+                console.log('🎉 CARGAS COMPLETADAS');
+                
                 // Calcular notas
                 this.calcularNotasPorcentajes();
                 
-                // CRÍTICO: Esperar 200ms antes de inicializar
+                // Forzar cierre
                 var self = this;
+                this.$el.find('.panel-body').each(function(index, elem) {
+                    var $body = $(elem);
+                    if ($body.is(':visible')) {
+                        $body.hide();
+                        var $panel = $body.closest('.panel');
+                        $panel.find('.fa-chevron-up').removeClass('fa-chevron-up').addClass('fa-chevron-down');
+                        console.log('🔒 Pre-timeout cerrado panel #' + index);
+                    }
+                });
+                console.log('🔒 Panels cerrados antes de habilitar');
+                
+                // CAMBIADO: De 500ms a 200ms para reducir ventana de clicks
+                console.log('⏰ Esperando 200ms...');
+                
                 setTimeout(function() {
+                    console.log('⏰ Timeout completado');
+                    
+                    // Triple verificación
+                    self.$el.find('.panel-body').each(function(index, elem) {
+                        var $body = $(elem);
+                        if ($body.is(':visible')) {
+                            $body.hide();
+                            var $panel = $body.closest('.panel');
+                            $panel.find('.fa-chevron-up').removeClass('fa-chevron-up').addClass('fa-chevron-down');
+                            console.log('⚠️ PANEL TODAVÍA ABIERTO #' + index + ' - cerrado forzosamente');
+                        }
+                    });
+                    
                     if (self.isRendered()) {
                         self.inicializarPanels();
                     }
-                }, 200);
-                
-                console.log('🎉 CARGAS COMPLETADAS');
+                    
+                    // Cuádruple verificación 100ms después
+                    setTimeout(function() {
+                        self.$el.find('.panel-body').each(function(index, elem) {
+                            var $body = $(elem);
+                            if ($body.is(':visible')) {
+                                $body.hide();
+                                var $panel = $body.closest('.panel');
+                                $panel.find('.fa-chevron-up').removeClass('fa-chevron-up').addClass('fa-chevron-down');
+                                console.log('🚨 PANEL REABIERTO #' + index + ' - cerrando OTRA VEZ');
+                            }
+                        });
+                    }, 100);
+                    
+                }, 200); // REDUCIDO de 500ms a 200ms
             }
         },
 
@@ -88,6 +133,18 @@ define('inventario:views/propiedad', [
         afterRender: function () {
             Dep.prototype.afterRender.call(this);
             
+            // NUEVO: Evitar múltiples renders
+            if (this.vistaYaRenderizada) {
+                console.log('⚠️ Vista ya renderizada, saltando afterRender');
+                return;
+            }
+            this.vistaYaRenderizada = true;
+            
+            console.log('🎨 afterRender iniciado');
+            console.log('📍 panelsInitialized:', this.panelsInitialized);
+            console.log('📍 datosCompletamenteCargados:', this.datosCompletamenteCargados);
+            console.log('📍 datosYaCargados:', this.datosYaCargados);
+            
             this.setupEventListeners();
             
             if (this.calculadoraNotas) {
@@ -98,17 +155,34 @@ define('inventario:views/propiedad', [
                 this.modalCrearRecaudo.inicializar();
             }
             
-            // SOLO actualizar estilos, NO inicializar panels aquí
             this.actualizarEstadosOtros();
             
-            console.log('✅ afterRender completado');
+            // Cierre post-render
+            var self = this;
+            setTimeout(function() {
+                console.log('🚫 CIERRE POST-RENDER (100ms)');
+                self.$el.find('.panel-body').each(function(index, elem) {
+                    var $body = $(elem);
+                    if ($body.is(':visible')) {
+                        $body.hide();
+                        var $panel = $body.closest('.panel');
+                        $panel.find('.fa-chevron-up').removeClass('fa-chevron-up').addClass('fa-chevron-down');
+                        console.log('  → Cerrado panel #' + index);
+                    }
+                });
+            }, 100);
+            
+            console.log('✅ afterRender completado (SIN inicializar panels)');
         },
 
         inicializarPanels: function() {
             // Protección: Solo ejecutar UNA VEZ
             if (this.panelsInitialized) {
+                console.log('⚠️ Panels ya inicializados, saliendo...');
                 return;
             }
+            
+            console.log('🎬 inicializarPanels llamado');
             
             this.panelsInitialized = true;
             this.inicializarSelect2SubBuyers();
@@ -124,25 +198,37 @@ define('inventario:views/propiedad', [
                 e.preventDefault();
                 e.stopPropagation();
                 
-                // Solo permitir toggle si ya terminó de cargar
+                console.log('📍 Click en toggle-panel');
+                console.log('  → panelsInitialized:', self.panelsInitialized);
+                console.log('  → datosCompletamenteCargados:', self.datosCompletamenteCargados);
+                
+                // CRÍTICO: Bloquear si aún no se habilitan los panels
                 if (!self.panelsInitialized) {
-                    console.log('⏳ Esperando carga completa...');
-                    return false; // IMPORTANTE: retornar false
+                    console.log('❌ BLOQUEADO - esperando habilitación');
+                    return false;
                 }
                 
+                // NUEVO: Bloquear si los datos no terminaron de cargar
+                if (!self.datosCompletamenteCargados) {
+                    console.log('❌ BLOQUEADO - esperando carga de datos');
+                    return false;
+                }
+                
+                console.log('✅ PERMITIDO');
                 self.togglePanel($(this).closest('.panel-heading')[0]);
             });
 
             // Botones de navegación
             this.$el.on('click', '[data-action="volver"], [data-action="cancelar"]', function () {
-                self.getRouter().navigate('#InvLista', { trigger: true });
+                window.location.href = '#InvLista';
+                window.location.reload();   
             });
 
             this.$el.on('click', '[data-action="guardar"]', function () {
                 self.guardarInventario();
             });
 
-            // Apoderado - ahora con "Lo tiene" / "No lo tiene"
+            // Apoderado
             this.$el.on('change', 'input[name="apoderado"]', function (e) {
                 var mostrar = $(e.currentTarget).val() === 'true';
                 self.mostrarObligaciones(mostrar);
@@ -160,7 +246,7 @@ define('inventario:views/propiedad', [
                 self.calcularNotasPorcentajes();
             });
 
-            // Buyer persona - ahora carga sub buyers disponibles
+            // Buyer persona
             this.$el.on('change', '#buyerPersona', function (e) {
                 self.cargarSubBuyersDisponibles($(e.target).val());
             });
@@ -209,13 +295,62 @@ define('inventario:views/propiedad', [
             var $body = $panel.find('.panel-body');
             var $icon = $heading.find('.fa-chevron-down, .fa-chevron-up');
             
-            if ($body.is(':visible')) {
-                $body.slideUp(200);
+            // Limpiar texto del título
+            var panelTitle = $panel.find('.panel-title').clone();
+            panelTitle.find('.nota-percentaje').remove();
+            panelTitle.find('.fas').remove();
+            var titleText = panelTitle.text().trim();
+            
+            var wasVisible = $body.is(':visible');
+            
+            console.log('🔘 togglePanel - Título:', titleText);
+            console.log('  → Estado anterior:', wasVisible ? 'VISIBLE' : 'OCULTO');
+            console.log('  → panelsInitialized:', this.panelsInitialized);
+            
+            if (wasVisible) {
+                console.log('  → Acción: CERRANDO');
+                
+                // NUEVO: Forzar hide() en lugar de slideUp()
+                $body.hide(); // Cambio de slideUp a hide
                 $icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+                
+                console.log('  → Hide() ejecutado');
             } else {
-                $body.slideDown(200);
+                console.log('  → Acción: ABRIENDO');
+                
+                // NUEVO: Forzar show() en lugar de slideDown()
+                $body.show(); // Cambio de slideDown a show
                 $icon.removeClass('fa-chevron-down').addClass('fa-chevron-up');
+                
+                console.log('  → Show() ejecutado');
             }
+            
+            // Verificación inmediata
+            var estadoFinal = $body.is(':visible');
+            console.log('  ✓ Estado final INMEDIATO:', estadoFinal ? 'VISIBLE' : 'OCULTO');
+            
+            // Verificación post-animación
+            setTimeout(function() {
+                var estadoFinalPost = $body.is(':visible');
+                if (estadoFinal !== estadoFinalPost) {
+                    console.log('  ⚠️ CAMBIÓ después de 250ms:', estadoFinalPost ? 'VISIBLE' : 'OCULTO');
+                }
+            }, 250);
+        },
+
+        verificarEstadoPanels: function() {
+            console.log('🔍 VERIFICANDO ESTADO DE PANELS:');
+            this.$el.find('.panel').each(function(index, panel) {
+                var $panel = $(panel);
+                var $body = $panel.find('.panel-body');
+                var $title = $panel.find('.panel-title').clone();
+                $title.find('.nota-percentaje').remove();
+                $title.find('.fas').remove();
+                var titleText = $title.text().trim();
+                var visible = $body.is(':visible');
+                
+                console.log('  Panel #' + index + ': ' + titleText + ' → ' + (visible ? '✅ VISIBLE' : '❌ OCULTO'));
+            });
         },
 
         mostrarObligaciones: function (mostrar) {
@@ -232,6 +367,15 @@ define('inventario:views/propiedad', [
         },
 
         cargarDatos: function () {
+            // Evitar doble carga
+            if (this.datosYaCargados || this.cargandoDatos) {
+                console.log('⚠️ Datos ya cargados o cargando, saltando duplicado');
+                return;
+            }
+            
+            this.cargandoDatos = true;
+            console.log('🔄 Iniciando carga de datos...');
+            
             var self = this;
             
             Espo.Ajax.getRequest('InvPropiedades/action/getOrCreate', {
@@ -242,9 +386,15 @@ define('inventario:views/propiedad', [
                         self.inventarioData = response.data.inventario;
                         self.propiedadData = response.data.propiedad;
                         self.inventarioId = self.inventarioData.id;
+                        
+                        self.datosYaCargados = true;
+                        self.cargandoDatos = false;
+                        
+                        console.log('✅ Datos cargados, llamando mostrarDatos()');
                         self.mostrarDatos();
                     } else {
                         self.$el.find('#loading-container').hide();
+                        self.cargandoDatos = false;
                         Espo.Ui.error(response.error || 'Error al cargar datos');
                         self.getRouter().navigate('#InvLista', { trigger: true });
                     }
@@ -252,6 +402,7 @@ define('inventario:views/propiedad', [
                 .catch(function (error) {
                     console.error('Error en Ajax:', error);
                     self.$el.find('#loading-container').hide();
+                    self.cargandoDatos = false;
                     Espo.Ui.error('Error al cargar datos de la propiedad');
                     self.getRouter().navigate('#InvLista', { trigger: true });
                 });
@@ -271,38 +422,48 @@ define('inventario:views/propiedad', [
                 var tipoPersona = this.inventarioData.tipoPersona || 'Natural';
                 this.$el.find('#tipoPersona').val(tipoPersona);
                 
-                // IMPORTANTE: Registrar ANTES de llamar la función
-                this.registrarCargaPendiente(); // Legal
+                this.registrarCargaPendiente();
                 this.cargarYMostrarRecaudosLegales(tipoPersona);
                 
                 // Panel 3: Mercadeo
-                this.registrarCargaPendiente(); // Mercadeo
+                this.registrarCargaPendiente();
                 this.mostrarInfoMercadeo();
                 
-                // Panel 4: Apoderado (se registra dentro si aplica)
+                // Panel 4: Apoderado
                 this.mostrarInfoApoderado();
                 
                 // Panel 5: Otros
                 this.mostrarInfoOtros();
                 
-                // IMPORTANTE: NO calcular notas aquí, esperar a que cargue
-                // this.calcularNotasPorcentajes(); // <-- QUITAR ESTO
-                
                 console.log('✅ Datos mostrados en UI');
+                
+                // NUEVO: Asegurar que todos los panels estén cerrados
+                this.$el.find('.panel-body').hide();
+                this.$el.find('.panel-heading .fas').removeClass('fa-chevron-up').addClass('fa-chevron-down');
+                console.log('🔒 Todos los panels cerrados forzosamente');
                 
             } catch (error) {
                 console.error('Error en mostrarDatos:', error);
                 this.$el.find('#loading-container').hide();
                 this.$el.find('#form-container').show();
                 
-                // Si hay error, resetear contador y habilitar
                 this.cargasPendientes = 0;
                 this.datosCompletamenteCargados = true;
                 if (this.isRendered()) {
                     this.inicializarPanels();
                 }
             }
+            console.log('✅ Datos mostrados en UI');
+        
+            // NUEVO: Cerrar forzosamente INMEDIATAMENTE
+            this.$el.find('.panel-body').each(function(index, elem) {
+                $(elem).hide();
+            });
+            this.$el.find('.panel-heading .fa-chevron-up').removeClass('fa-chevron-up').addClass('fa-chevron-down');
+            console.log('🔒 Todos los panels cerrados forzosamente (post-mostrarDatos)');
+
         },
+
 
         mostrarInfoPropiedad: function () {
             this.$el.find('#prop-tipoOperacion').text(this.propiedadData.tipoOperacion || '-');
@@ -1035,10 +1196,16 @@ define('inventario:views/propiedad', [
         },
 
         calcularNotasPorcentajes: function () {
+            console.log('📊 === CALCULANDO NOTAS Y PORCENTAJES ===');
+            
             this.calcularPorcentajeLegal();
             this.calcularPorcentajeMercadeo();
             this.calcularPorcentajeApoderado();
+            
+            // IMPORTANTE: Calcular estatus propiedad
             this.calcularEstatusPropiedad();
+            
+            console.log('✅ Cálculos completados');
         },
 
         calcularPorcentajeLegal: function () {
@@ -1130,38 +1297,108 @@ define('inventario:views/propiedad', [
         },
 
         calcularEstatusPropiedad: function () {
-            var porcentajeLegal = parseInt(this.$el.find('#nota-legal').text()) || 0;
-            var estadoLegal = porcentajeLegal >= 90 ? 'Verde' : (porcentajeLegal >= 80 ? 'Amarillo' : 'Rojo');
+            console.log('🎯 === CALCULANDO ESTATUS PROPIEDAD ===');
             
-            var porcentajeMercadeo = parseInt(this.$el.find('#nota-mercadeo').text()) || 0;
-            var estadoMercadeo = porcentajeMercadeo >= 90 ? 'Verde' : (porcentajeMercadeo >= 70 ? 'Amarillo' : 'Rojo');
+            var items = [];
             
-            var estadoPrecio = this.obtenerEstadoDeSelect('precio');
-            var estadoExclusiva = this.obtenerEstadoDeSelect('exclusividad');
-            var estadoUbicacion = this.obtenerEstadoDeSelect('ubicacion');
+            // 1. Legal (calculado)
+            var legalLista = this.obtenerListaActual('legal');
+            var legalTotal = legalLista.mostrados.length;
+            var legalCompletos = 0;
             
-            var estados = [estadoLegal, estadoMercadeo, estadoPrecio, estadoExclusiva, estadoUbicacion];
-            var verdes = estados.filter(function(e) { return e === 'Verde'; }).length;
-            var amarillos = estados.filter(function(e) { return e === 'Amarillo'; }).length;
-            var rojos = estados.filter(function(e) { return e === 'Rojo'; }).length;
+            legalLista.mostrados.forEach(function(recaudo) {
+                if (this.valoresRecaudosLegal[recaudo.id] === 'Adecuado') {
+                    legalCompletos++;
+                }
+            }.bind(this));
             
-            var estatusPropiedad = 'Verde';
+            var legalPorcentaje = legalTotal > 0 ? Math.round((legalCompletos / legalTotal) * 100) : 0;
+            var legalColor = legalPorcentaje >= 90 ? 'Verde' : (legalPorcentaje >= 80 ? 'Amarillo' : 'Rojo');
+            items.push({ nombre: 'Legal', valor: legalColor });
+            console.log('  📊 Legal:', legalPorcentaje + '%', '→', legalColor);
             
+            // 2. Mercadeo (calculado)
+            var mercadeoLista = this.listasRecaudos.mercadeo;
+            var mercadeoTotal = mercadeoLista.mostrados.length;
+            var mercadeoCompletos = 0;
+            
+            mercadeoLista.mostrados.forEach(function(recaudo) {
+                if (this.valoresRecaudosMercadeo[recaudo.id] === 'Adecuado') {
+                    mercadeoCompletos++;
+                }
+            }.bind(this));
+            
+            var mercadeoPorcentaje = mercadeoTotal > 0 ? Math.round((mercadeoCompletos / mercadeoTotal) * 100) : 0;
+            var mercadeoColor = mercadeoPorcentaje >= 90 ? 'Verde' : (mercadeoPorcentaje >= 70 ? 'Amarillo' : 'Rojo');
+            items.push({ nombre: 'Mercadeo', valor: mercadeoColor });
+            console.log('  📊 Mercadeo:', mercadeoPorcentaje + '%', '→', mercadeoColor);
+            
+            // 3. Precio (selector)
+            var precio = this.$el.find('#select-precio').val();
+            var precioColor = 'Rojo';
+            if (precio === 'En rango') precioColor = 'Verde';
+            else if (precio === 'Cercano al rango de precio') precioColor = 'Amarillo';
+            else if (precio === 'Fuera del rango de precio') precioColor = 'Rojo';
+            items.push({ nombre: 'Precio', valor: precioColor });
+            console.log('  📊 Precio:', precio, '→', precioColor);
+            
+            // 4. Exclusividad (selector)
+            var exclusividad = this.$el.find('#select-exclusividad').val();
+            var exclusividadColor = 'Rojo';
+            if (exclusividad === 'Exclusividad pura o total con contrato firmado') exclusividadColor = 'Verde';
+            else if (exclusividad === 'Exclusividad interna de CENTURY con contrato firmado') exclusividadColor = 'Amarillo';
+            else if (exclusividad === 'Sin exclusividad') exclusividadColor = 'Rojo';
+            items.push({ nombre: 'Exclusividad', valor: exclusividadColor });
+            console.log('  📊 Exclusividad:', exclusividad, '→', exclusividadColor);
+            
+            // 5. Ubicación (selector)
+            var ubicacion = this.$el.find('#select-ubicacion').val();
+            var ubicacionColor = 'Rojo';
+            if (ubicacion === 'Ubicación atractiva') ubicacionColor = 'Verde';
+            else if (ubicacion === 'Ubicación medianamente atractiva') ubicacionColor = 'Amarillo';
+            else if (ubicacion === 'Ubicación no atractiva') ubicacionColor = 'Rojo';
+            items.push({ nombre: 'Ubicación', valor: ubicacionColor });
+            console.log('  📊 Ubicación:', ubicacion, '→', ubicacionColor);
+            
+            // APLICAR FÓRMULA
+            var verdes = 0;
+            var amarillos = 0;
+            var rojos = 0;
+            
+            items.forEach(function(item) {
+                if (item.valor === 'Verde') verdes++;
+                else if (item.valor === 'Amarillo') amarillos++;
+                else if (item.valor === 'Rojo') rojos++;
+            });
+            
+            console.log('  🔢 Conteo: Verde=' + verdes + ', Amarillo=' + amarillos + ', Rojo=' + rojos);
+            
+            var estatusFinal = 'Rojo'; // Por defecto
+            
+            // Aplicar reglas
             if (rojos >= 2) {
-                estatusPropiedad = 'Rojo';
-            } else if (rojos === 1 && amarillos >= 1) {
-                estatusPropiedad = 'Rojo';
+                estatusFinal = 'Rojo';
+                console.log('  ✓ Regla: 2+ rojos → Rojo');
             } else if (rojos === 1) {
-                estatusPropiedad = 'Amarillo';
+                estatusFinal = 'Amarillo';
+                console.log('  ✓ Regla: 1 rojo → Amarillo');
             } else if (amarillos >= 2) {
-                estatusPropiedad = 'Amarillo';
-            } else if (amarillos === 1 && verdes >= 4) {
-                estatusPropiedad = 'Verde';
+                estatusFinal = 'Amarillo';
+                console.log('  ✓ Regla: 2+ amarillos → Amarillo');
+            } else if (amarillos === 1 && verdes === 4) {
+                estatusFinal = 'Verde';
+                console.log('  ✓ Regla: 1 amarillo + 4 verdes → Verde');
             } else if (verdes === 5) {
-                estatusPropiedad = 'Verde';
+                estatusFinal = 'Verde';
+                console.log('  ✓ Regla: 5 verdes → Verde');
+            } else {
+                console.log('  ⚠️ Sin regla específica, usando Rojo por defecto');
             }
             
-            this.estatusPropiedad = estatusPropiedad;
+            console.log('  🎯 ESTATUS FINAL:', estatusFinal);
+            
+            this.estatusPropiedad = estatusFinal;
+            return estatusFinal;
         },
 
         obtenerEstadoDeSelect: function (campo) {
@@ -1234,6 +1471,9 @@ define('inventario:views/propiedad', [
             var tipoPersona = this.$el.find('#tipoPersona').val();
             var tieneApoderado = this.$el.find('input[name="apoderado"]:checked').val() === 'true';
             
+            // Calcular estatus antes de guardar
+            var estatusPropiedad = this.calcularEstatusPropiedad();
+            
             var data = {
                 inventarioId: this.inventarioId,
                 tipoPersona: tipoPersona,
@@ -1251,11 +1491,11 @@ define('inventario:views/propiedad', [
                 precio: this.$el.find('#select-precio').val(),
                 ubicacion: this.$el.find('#select-ubicacion').val(),
                 exclusividad: this.$el.find('#select-exclusividad').val(),
-                estatusPropiedad: this.estatusPropiedad || 'Rojo'
+                estatusPropiedad: estatusPropiedad // IMPORTANTE: Enviar el calculado
             };
             
-            // DEBUG: Verificar que los datos son correctos
-            console.log('📤 Datos a guardar:', data);
+            console.log('📤 Guardando con estatusPropiedad:', estatusPropiedad);
+            console.log('📤 Datos completos:', data);
             
             var $btnGuardar = this.$el.find('[data-action="guardar"]');
             var textoOriginal = $btnGuardar.html();
@@ -1267,8 +1507,11 @@ define('inventario:views/propiedad', [
                 .then(function (response) {
                     if (response.success) {
                         Espo.Ui.success('Inventario guardado exitosamente');
+                        
+                        // CAMBIO: Recargar en lugar de redirigir
                         setTimeout(function () {
-                            self.getRouter().navigate('#InvLista', { trigger: true });
+                            console.log('🔄 Recargando página...');
+                            window.location.reload();
                         }, 1000);
                     } else {
                         Espo.Ui.error(response.error || 'Error al guardar');
