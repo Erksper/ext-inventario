@@ -20,9 +20,6 @@
                         <button class="btn btn-secondary" data-action="volver">
                             <i class="fas fa-arrow-left"></i> Volver
                         </button>
-                        <button class="btn btn-info" data-action="depurar" style="margin-left: 10px;">
-                            <i class="fas fa-bug"></i> Depurar
-                        </button>
                     </div>
                 </div>
             </div>
@@ -64,7 +61,7 @@
                     </div>
                     <div class="col-md-4">
                         <div class="info-item">
-                            <div class="info-label">Sub Tipo</div>
+                            <div class="info-label">Sub Tipo de Propiedad</div> <!-- CAMBIADO -->
                             <div class="info-value" id="prop-subTipoPropiedad">-</div>
                         </div>
                     </div>
@@ -90,16 +87,22 @@
                     </div>
                 </div>
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-3">
                         <div class="info-item">
-                            <div class="info-label">Asesor</div>
+                            <div class="info-label">Asesor Encargado</div> <!-- CAMBIADO -->
                             <div class="info-value" id="prop-asesor">-</div>
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="info-item">
-                            <div class="info-label">Fecha Alta</div>
+                            <div class="info-label">Fecha de Publicación</div> <!-- CAMBIADO -->
                             <div class="info-value" id="prop-fechaAlta">-</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="info-item">
+                            <div class="info-label">Días en el Mercado</div> <!-- NUEVO -->
+                            <div class="info-value" id="prop-diasMercado">-</div>
                         </div>
                     </div>
                     <div class="col-md-3">
@@ -108,6 +111,14 @@
                             <div class="info-value">
                                 <span class="badge" id="prop-status">-</span>
                             </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row" style="margin-top: 20px;">
+                    <div class="col-md-12">
+                        <div class="alert alert-info" style="margin-bottom: 0;">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Nota:</strong> Cualquier cambio que se requiera hacer a estos datos debe hacerse en el sistema 21Online. Cualquier duda consulte a su asesor de casa nacional.
                         </div>
                     </div>
                 </div>
@@ -241,7 +252,6 @@
             <div class="panel-heading" data-action="toggle-panel">
                 <h4 class="panel-title">
                     <i class="fas fa-user-check"></i> Apoderado
-                    <!-- Icono de porcentaje para notas -->
                     <span class="nota-percentaje" style="float: right; margin-left: 10px; font-weight: bold; color: #666;">
                         <i class="fas fa-percentage"></i> <span id="nota-apoderado">0%</span>
                     </span>
@@ -255,10 +265,10 @@
                             <label class="form-label">¿Cuenta con apoderado?</label>
                             <div class="radio-group">
                                 <label class="radio-label">
-                                    <input type="radio" name="apoderado" value="true"> Sí
+                                    <input type="radio" name="apoderado" value="true"> Lo tiene  <!-- CAMBIADO -->
                                 </label>
                                 <label class="radio-label">
-                                    <input type="radio" name="apoderado" value="false" checked> No
+                                    <input type="radio" name="apoderado" value="false" checked> No lo tiene  <!-- CAMBIADO -->
                                 </label>
                             </div>
                         </div>
@@ -301,171 +311,55 @@
             <div class="panel-heading" data-action="toggle-panel">
                 <h4 class="panel-title">
                     <i class="fas fa-ellipsis-h"></i> Otros
-                    <!-- Estados individuales con diseño de cuadro -->
-                    <span class="panel-status-container">
-                        <span class="status-box" id="status-exclusividad" data-campo="exclusividad">
-                            <span class="status-label">Exclusividad</span>
-                        </span>
-                        <span class="status-box" id="status-precio" data-campo="precio">
-                            <span class="status-label">Precio</span>
-                        </span>
-                        <span class="status-box" id="status-ubicacion" data-campo="ubicacion">
-                            <span class="status-label">Ubicación</span>
-                        </span>
-                        <span class="status-box" id="status-demanda" data-campo="demanda">
-                            <span class="status-label">Demanda</span>
-                        </span>
-                    </span>
                     <span class="fas fa-chevron-down"></span>
                 </h4>
             </div>
             <div class="panel-body" style="display: none;">
-                <!-- Tabla de semáforo para los 4 campos -->
-                <div class="table-responsive">
-                    <table class="table table-bordered semaforo-table">
-                        <thead>
-                            <tr>
-                                <th>Campo</th>
-                                <th><i class="fas fa-circle icon-verde"></i> Adecuado</th>
-                                <th><i class="fas fa-circle icon-amarillo"></i> Revisar</th>
-                                <th><i class="fas fa-circle icon-rojo"></i> Modificar</th>
-                                <th>Estado</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr class="campo-row">
-                                <td>
-                                    <div class="campo-texto-container">
-                                        <h4>Exclusividad</h4>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="color-option color-verde"
-                                        data-action="selectSemaforo" 
-                                        data-campo="exclusividad" 
-                                        data-valor="Exclusividad pura o total con contrato firmado">
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="color-option color-amarillo"
-                                        data-action="selectSemaforo" 
-                                        data-campo="exclusividad" 
-                                        data-valor="Exclusividad interna de CENTURY con contrato firmado">
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="color-option color-rojo"
-                                        data-action="selectSemaforo" 
-                                        data-campo="exclusividad" 
-                                        data-valor="No exclusividad">
-                                    </div>
-                                </td>
-                                <td class="estado-campo" id="estado-exclusividad">
-                                    <span class="badge estado-badge estado-pendiente">Pendiente</span>
-                                </td>
-                            </tr>
-                            <tr class="campo-row">
-                                <td>
-                                    <div class="campo-texto-container">
-                                        <h4>Precio</h4>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="color-option color-verde"
-                                        data-action="selectSemaforo" 
-                                        data-campo="precio" 
-                                        data-valor="En rango">
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="color-option color-amarillo"
-                                        data-action="selectSemaforo" 
-                                        data-campo="precio" 
-                                        data-valor="Sobre el rango">
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="color-option color-rojo"
-                                        data-action="selectSemaforo" 
-                                        data-campo="precio" 
-                                        data-valor="Debajo del rango">
-                                    </div>
-                                </td>
-                                <td class="estado-campo" id="estado-precio">
-                                    <span class="badge estado-badge estado-pendiente">Pendiente</span>
-                                </td>
-                            </tr>
-                            <tr class="campo-row">
-                                <td>
-                                    <div class="campo-texto-container">
-                                        <h4>Ubicación</h4>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="color-option color-verde"
-                                        data-action="selectSemaforo" 
-                                        data-campo="ubicacion" 
-                                        data-valor="Adecuado">
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="color-option color-amarillo"
-                                        data-action="selectSemaforo" 
-                                        data-campo="ubicacion" 
-                                        data-valor="Revisar">
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="color-option color-rojo"
-                                        data-action="selectSemaforo" 
-                                        data-campo="ubicacion" 
-                                        data-valor="Modificar">
-                                    </div>
-                                </td>
-                                <td class="estado-campo" id="estado-ubicacion">
-                                    <span class="badge estado-badge estado-pendiente">Pendiente</span>
-                                </td>
-                            </tr>
-                            <tr class="campo-row">
-                                <td>
-                                    <div class="campo-texto-container">
-                                        <h4>Demanda</h4>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="color-option color-verde"
-                                        data-action="selectSemaforo" 
-                                        data-campo="demanda" 
-                                        data-valor="Alta demanda">
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="color-option color-amarillo"
-                                        data-action="selectSemaforo" 
-                                        data-campo="demanda" 
-                                        data-valor="Media demanda">
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="color-option color-rojo"
-                                        data-action="selectSemaforo" 
-                                        data-campo="demanda" 
-                                        data-valor="Baja demanda">
-                                    </div>
-                                </td>
-                                <td class="estado-campo" id="estado-demanda">
-                                    <span class="badge estado-badge estado-pendiente">Pendiente</span>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <!-- NUEVA ESTRUCTURA CON SELECTORES -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label">Exclusividad</label>
+                            <select id="select-exclusividad" class="form-control select-otros" data-campo="exclusividad">
+                                <option value="Exclusividad pura o total con contrato firmado">Exclusividad pura o total con contrato firmado</option>
+                                <option value="Exclusividad interna de CENTURY con contrato firmado">Exclusividad interna de CENTURY con contrato firmado</option>
+                                <option value="Sin exclusividad">Sin exclusividad</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label">Precio</label>
+                            <select id="select-precio" class="form-control select-otros" data-campo="precio">
+                                <option value="En rango">En rango</option>
+                                <option value="Cercano al rango de precio">Cercano al rango de precio</option>
+                                <option value="Fuera del rango de precio">Fuera del rango de precio</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
-                
-                <!-- Inputs hidden para los valores de semáforo -->
-                <input type="hidden" id="exclusividad" value="No exclusividad">
-                <input type="hidden" id="precio" value="En rango">
-                <input type="hidden" id="ubicacion" value="Modificar">
-                <input type="hidden" id="demanda" value="Media demanda">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label">Ubicación</label>
+                            <select id="select-ubicacion" class="form-control select-otros" data-campo="ubicacion">
+                                <option value="Ubicación atractiva">Ubicación atractiva</option>
+                                <option value="Ubicación medianamente atractiva">Ubicación medianamente atractiva</option>
+                                <option value="Ubicación no atractiva">Ubicación no atractiva</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label">Demanda</label>
+                            <select id="select-demanda" class="form-control select-otros" data-campo="demanda">
+                                <option value="Alta demanda">Alta demanda</option>
+                                <option value="Media demanda">Media demanda</option>
+                                <option value="Baja demanda">Baja demanda</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 

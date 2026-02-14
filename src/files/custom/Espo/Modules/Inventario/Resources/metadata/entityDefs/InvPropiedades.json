@@ -11,11 +11,6 @@
             "required": true,
             "view": "views/fields/link"
         },
-        "tipoDePropiedad": {
-            "type": "varchar",
-            "maxLength": 150,
-            "trim": true
-        },
         "tipoPersona": {
             "type": "enum",
             "options": ["Natural", "Juridico"],
@@ -26,149 +21,39 @@
             "options": ["Comprador", "Vendedor", "Arrendador", "Arrendatario"],
             "default": "Comprador"
         },
-        "subBuyer": {
-            "type": "varchar",
-            "maxLength": 255,
-            "trim": true
-        },
-        "fotos": {
-            "type": "enum",
-            "options": ["Modificar", "Revisar", "Adecuado"],
-            "default": "Modificar",
-            "style": {
-                "Modificar": "danger",
-                "Revisar": "warning",
-                "Adecuado": "success"
-            }
-        },
-        "copy": {
-            "type": "enum",
-            "options": ["Modificar", "Revisar", "Adecuado"],
-            "default": "Modificar",
-            "style": {
-                "Modificar": "danger",
-                "Revisar": "warning",
-                "Adecuado": "success"
-            }
-        },
-        "video": {
-            "type": "enum",
-            "options": ["Modificar", "Revisar", "Adecuado"],
-            "default": "Modificar",
-            "style": {
-                "Modificar": "danger",
-                "Revisar": "warning",
-                "Adecuado": "success"
-            }
-        },
-        "videoInsertado": {
-            "type": "enum",
-            "options": ["Modificar", "Revisar", "Adecuado"],
-            "default": "Modificar",
-            "style": {
-                "Modificar": "danger",
-                "Revisar": "warning",
-                "Adecuado": "success"
-            }
-        },
-        "metricas": {
-            "type": "enum",
-            "options": ["Modificar", "Revisar", "Adecuado"],
-            "default": "Modificar",
-            "style": {
-                "Modificar": "danger",
-                "Revisar": "warning",
-                "Adecuado": "success"
-            }
-        },
-        "rotulo": {
-            "type": "enum",
-            "options": ["Modificar", "Revisar", "Adecuado"],
-            "default": "Modificar",
-            "style": {
-                "Modificar": "danger",
-                "Revisar": "warning",
-                "Adecuado": "success"
-            }
+        "subBuyers": {
+            "type": "linkMultiple",
+            "entity": "InvSubBuyer",
+            "view": "views/fields/link-multiple"
         },
         "precio": {
             "type": "enum",
-            "options": ["Debajo del rango", "En rango", "Sobre el rango"],
+            "options": ["Fuera del rango de precio", "En rango", "Cercano al rango de precio"],
             "default": "En rango",
             "style": {
-                "Sobre el rango": "warning",
+                "Cercano al rango de precio": "warning",
                 "En rango": "success",
-                "Debajo del rango": "danger"
-            }
-        },
-        "notaLegal": {
-            "type": "enum",
-            "options": ["Modificar", "Revisar", "Adecuado"],
-            "default": "Modificar",
-            "style": {
-                "Modificar": "danger",
-                "Revisar": "warning",
-                "Adecuado": "success"
-            }
-        },
-        "notaMercadeo": {
-            "type": "enum",
-            "options": ["Modificar", "Revisar", "Adecuado"],
-            "default": "Modificar",
-            "style": {
-                "Modificar": "danger",
-                "Revisar": "warning",
-                "Adecuado": "success"
-            }
-        },
-        "notaPrecio": {
-            "type": "enum",
-            "options": ["Modificar", "Revisar", "Adecuado"],
-            "default": "Modificar",
-            "style": {
-                "Modificar": "danger",
-                "Revisar": "warning",
-                "Adecuado": "success"
-            }
-        },
-        "notaExclusiva": {
-            "type": "enum",
-            "options": ["Modificar", "Revisar", "Adecuado"],
-            "default": "Modificar",
-            "style": {
-                "Modificar": "danger",
-                "Revisar": "warning",
-                "Adecuado": "success"
-            }
-        },
-        "notaUbicacion": {
-            "type": "enum",
-            "options": ["Modificar", "Revisar", "Adecuado"],
-            "default": "Modificar",
-            "style": {
-                "Modificar": "danger",
-                "Revisar": "warning",
-                "Adecuado": "success"
+                "Fuera del rango de precio": "danger"
             }
         },
         "ubicacion": {
             "type": "enum",
-            "options": ["Modificar", "Revisar", "Adecuado"],
-            "default": "Modificar",
+            "options": ["Ubicación no atractiva", "Ubicación medianamente atractiva", "Ubicación atractiva"],
+            "default": "Ubicación no atractiva",
             "style": {
-                "Modificar": "danger",
-                "Revisar": "warning",
-                "Adecuado": "success"
+                "Ubicación no atractiva": "danger",
+                "Ubicación medianamente atractiva": "warning",
+                "Ubicación atractiva": "success"
             }
         },
         "exclusividad": {
             "type": "enum",
             "options": [
-                "No exclusividad",
+                "Sin exclusividad",
                 "Exclusividad interna de CENTURY con contrato firmado",
                 "Exclusividad pura o total con contrato firmado"
             ],
-            "default": "No exclusividad"
+            "default": "Sin exclusividad"
         },
         "apoderado": {
             "type": "bool",
@@ -178,6 +63,16 @@
             "type": "enum",
             "options": ["Baja demanda", "Media demanda", "Alta demanda"],
             "default": "Media demanda"
+        },
+        "estatusPropiedad": {
+            "type": "enum",
+            "options": ["Verde", "Amarillo", "Rojo"],
+            "default": "Rojo",
+            "style": {
+                "Verde": "success",
+                "Amarillo": "warning",
+                "Rojo": "danger"
+            }
         },
         "deleted": {
             "type": "bool",
@@ -214,7 +109,8 @@
         "subBuyers": {
             "type": "hasMany",
             "entity": "InvSubBuyer",
-            "foreign": "idInvPropiedades"
+            "foreign": "invPropiedades",
+            "relationName": "invPropiedadesInvSubBuyer"
         },
         "createdBy": {
             "type": "belongsTo",

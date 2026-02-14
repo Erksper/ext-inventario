@@ -1,11 +1,11 @@
 <?php
-
 namespace Espo\Modules\Inventario\Controllers;
 
-use Espo\Core\Controllers\Record;
+use Espo\Core\Controllers\Base;
+use Espo\Core\Exceptions\BadRequest;
 use Espo\Core\Api\Request;
 
-class InvPropiedades extends Record
+class InvPropiedades extends Base
 {
     /**
      * Obtener o crear inventario para una propiedad
@@ -23,9 +23,8 @@ class InvPropiedades extends Record
         
         $entityManager = $this->getContainer()->get('entityManager');
         
-        // Verificar que la propiedad existe
+        // Buscar propiedad
         $propiedad = $entityManager->getEntity('Propiedades', $propiedadId);
-        
         if (!$propiedad) {
             return [
                 'success' => false,
@@ -33,84 +32,27 @@ class InvPropiedades extends Record
             ];
         }
         
-        // Buscar si ya existe un inventario para esta propiedad
+        // Buscar inventario existente
         $inventario = $entityManager->getRepository('InvPropiedades')
-            ->where([
-                'idPropiedadId' => $propiedadId,
-                'deleted' => false
-            ])
+            ->where(['idPropiedadId' => $propiedadId, 'deleted' => false])
             ->findOne();
         
-        // Si no existe, crear uno nuevo con valores por defecto
+        // Si no existe, crear nuevo
         if (!$inventario) {
-            try {
-                $inventario = $entityManager->getEntity('InvPropiedades');
-                
-                $inventario->set([
-                    'idPropiedadId' => $propiedadId,
-                    'name' => 'Inventario - ' . $propiedad->get('name'),
-                    'tipoDePropiedad' => $propiedad->get('tipoPropiedad'),
-                    'tipoPersona' => 'Natural',
-                    'buyer' => 'Comprador',
-                    'buyerPersona' => 'Comprador',
-                    'subBuyer' => '',
-                    'subBuyerPersona' => '',
-                    'fotos' => 'Modificar',
-                    'copy' => 'Modificar',
-                    'video' => 'Modificar',
-                    'videoInsertado' => 'Modificar',
-                    'metricas' => 'Modificar',
-                    'rotulo' => 'Modificar',
-                    'precio' => 'En rango',
-                    'ubicacion' => 'Modificar',
-                    'exclusividad' => 'No exclusividad',
-                    'apoderado' => false,
-                    'demanda' => 'Media demanda',
-                    'notaLegal' => 'Modificar',
-                    'notaMercadeo' => 'Modificar',
-                    'notaPrecio' => 'Modificar',
-                    'notaExclusiva' => 'Modificar',
-                    'notaUbicacion' => 'Modificar'
-                ]);
-                
-                $entityManager->saveEntity($inventario);
-                
-            } catch (\Exception $e) {
-                return [
-                    'success' => false,
-                    'error' => 'Error al crear inventario: ' . $e->getMessage()
-                ];
-            }
-        }
-        
-        // Obtener datos de la propiedad
-        $asesorNombre = null;
-        $assignedUser = $propiedad->get('assignedUser');
-        if ($assignedUser) {
-            $asesorNombre = $assignedUser->get('name');
-        }
-        
-        // Formatear ubicación para evitar problemas de encoding
-        $ubicacionCompleta = [];
-        $camposUbicacion = ['calle', 'numero', 'urbanizacion', 'municipio', 'ciudad', 'estado'];
-
-        foreach ($camposUbicacion as $campo) {
-            $valor = $propiedad->get($campo);
-            if (!empty($valor)) {
-                // Decodificar cualquier entidad HTML y asegurar UTF-8
-                $valor = html_entity_decode($valor, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-                // Limpiar y asegurar encoding
-                $valor = trim($valor);
-                if (!empty($valor)) {
-                    $ubicacionCompleta[] = $valor;
-                }
-            }
-        }
-
-        $ubicacionStr = implode(', ', $ubicacionCompleta);
-        // Si después de todo sigue vacío, poner un guión
-        if (empty($ubicacionStr)) {
-            $ubicacionStr = '-';
+            $inventario = $entityManager->getEntity('InvPropiedades');
+            $inventario->set([
+                'idPropiedadId' => $propiedadId,
+                'name' => 'Inventario - ' . $propiedad->get('name'),
+                'tipoPersona' => 'Natural',
+                'buyer' => 'Comprador',
+                'precio' => 'En rango',
+                'ubicacion' => 'Ubicación no atractiva',
+                'exclusividad' => 'Sin exclusividad',
+                'apoderado' => false,
+                'demanda' => 'Media demanda',
+                'estatusPropiedad' => 'Rojo'
+            ]);
+            $entityManager->saveEntity($inventario);
         }
         
         return [
@@ -120,25 +62,12 @@ class InvPropiedades extends Record
                     'id' => $inventario->get('id'),
                     'tipoPersona' => $inventario->get('tipoPersona'),
                     'buyer' => $inventario->get('buyer'),
-                    'buyerPersona' => $inventario->get('buyerPersona') ?: $inventario->get('buyer'),
-                    'subBuyer' => $inventario->get('subBuyer'),
-                    'subBuyerPersona' => $inventario->get('subBuyerPersona') ?: $inventario->get('subBuyer'),
-                    'fotos' => $inventario->get('fotos'),
-                    'copy' => $inventario->get('copy'),
-                    'video' => $inventario->get('video'),
-                    'videoInsertado' => $inventario->get('videoInsertado'),
-                    'metricas' => $inventario->get('metricas'),
-                    'rotulo' => $inventario->get('rotulo'),
                     'precio' => $inventario->get('precio'),
                     'ubicacion' => $inventario->get('ubicacion'),
                     'exclusividad' => $inventario->get('exclusividad'),
                     'apoderado' => $inventario->get('apoderado'),
                     'demanda' => $inventario->get('demanda'),
-                    'notaLegal' => $inventario->get('notaLegal'),
-                    'notaMercadeo' => $inventario->get('notaMercadeo'),
-                    'notaPrecio' => $inventario->get('notaPrecio'),
-                    'notaExclusiva' => $inventario->get('notaExclusiva'),
-                    'notaUbicacion' => $inventario->get('notaUbicacion')
+                    'estatusPropiedad' => $inventario->get('estatusPropiedad')
                 ],
                 'propiedad' => [
                     'id' => $propiedad->get('id'),
@@ -148,8 +77,8 @@ class InvPropiedades extends Record
                     'subTipoPropiedad' => $propiedad->get('subTipoPropiedad'),
                     'm2C' => $propiedad->get('m2C'),
                     'm2T' => $propiedad->get('m2T'),
-                    'ubicacion' => $ubicacionStr,
-                    'asesorNombre' => $asesorNombre,
+                    'ubicacion' => $propiedad->get('ubicacion'),
+                    'asesorNombre' => $propiedad->get('asesorNombre'),
                     'fechaAlta' => $propiedad->get('fechaAlta'),
                     'status' => $propiedad->get('status')
                 ]
@@ -158,190 +87,89 @@ class InvPropiedades extends Record
     }
     
     /**
-     * Guardar inventario
+     * Obtener sub buyers asociados a una propiedad
+     * CORREGIDO: Sin usar isRelationExists()
      */
-    public function postActionSave(Request $request): array
+    public function getActionGetSubBuyersPropiedad(Request $request): array
     {
-        $data = $request->getParsedBody();
+        $inventarioId = $request->getQueryParam('inventarioId');
         
-        if (is_object($data)) {
-            $data = (array) $data;
-        }
-        
-        if (empty($data['inventarioId'])) {
+        if (!$inventarioId) {
             return [
                 'success' => false,
                 'error' => 'inventarioId es requerido'
             ];
         }
         
-        $entityManager = $this->getContainer()->get('entityManager');
-        $inventario = $entityManager->getEntity('InvPropiedades', $data['inventarioId']);
-        
-        if (!$inventario) {
-            return [
-                'success' => false,
-                'error' => 'Inventario no encontrado'
-            ];
-        }
-        
         try {
-            // Actualizar campos
-            $updates = [
-                'tipoPersona' => $data['tipoPersona'] ?? $inventario->get('tipoPersona'),
-                'buyer' => $data['buyerPersona'] ?? $inventario->get('buyer'),
-                'buyerPersona' => $data['buyerPersona'] ?? $inventario->get('buyerPersona'),
-                'subBuyer' => $data['subBuyerPersona'] ?? $inventario->get('subBuyer'),
-                'subBuyerPersona' => $data['subBuyerPersona'] ?? $inventario->get('subBuyerPersona'),
-                'demanda' => $data['demanda'] ?? $inventario->get('demanda'),
-                'fotos' => $data['fotos'] ?? $inventario->get('fotos'),
-                'copy' => $data['copy'] ?? $inventario->get('copy'),
-                'video' => $data['video'] ?? $inventario->get('video'),
-                'videoInsertado' => $data['videoInsertado'] ?? $inventario->get('videoInsertado'),
-                'metricas' => $data['metricas'] ?? $inventario->get('metricas'),
-                'rotulo' => $data['rotulo'] ?? $inventario->get('rotulo'),
-                'precio' => $data['precio'] ?? $inventario->get('precio'),
-                'ubicacion' => $data['ubicacion'] ?? $inventario->get('ubicacion'),
-                'exclusividad' => $data['exclusividad'] ?? $inventario->get('exclusividad'),
-                'apoderado' => isset($data['apoderado']) ? ($data['apoderado'] === 'true' || $data['apoderado'] === true) : $inventario->get('apoderado'),
-                'notaLegal' => $data['notaLegal'] ?? $inventario->get('notaLegal'),
-                'notaMercadeo' => $data['notaMercadeo'] ?? $inventario->get('notaMercadeo'),
-                'notaPrecio' => $data['notaPrecio'] ?? $inventario->get('notaPrecio'),
-                'notaExclusiva' => $data['notaExclusiva'] ?? $inventario->get('notaExclusiva'),
-                'notaUbicacion' => $data['notaUbicacion'] ?? $inventario->get('notaUbicacion')
-            ];
+            $entityManager = $this->getContainer()->get('entityManager');
             
-            $inventario->set($updates);
-            $entityManager->saveEntity($inventario);
-            
-            return [
-                'success' => true,
-                'message' => 'Inventario guardado exitosamente'
-            ];
-            
-        } catch (\Exception $e) {
-            return [
-                'success' => false,
-                'error' => 'Error al guardar inventario: ' . $e->getMessage()
-            ];
-        }
-    }
-
-    /**
-    * Obtener sub buyers por buyer
-    */
-    public function getActionGetSubBuyers(Request $request): array
-    {
-        $buyer = $request->getQueryParam('buyer');
-        
-        if (!$buyer) {
-            return [
-                'success' => false,
-                'error' => 'buyer es requerido'
-            ];
-        }
-        
-        $entityManager = $this->getContainer()->get('entityManager');
-        
-        try {
-            // Buscar en InvSubBuyer donde el campo buyer coincida
-            $subBuyers = $entityManager->getRepository('InvSubBuyer')
-                ->select(['id', 'name'])
-                ->where([
-                    'buyer' => $buyer,
-                    'deleted' => false
-                ])
-                ->order('name', 'ASC')
-                ->find();
-            
-            $result = [];
-            foreach ($subBuyers as $subBuyer) {
-                $result[] = [
-                    'id' => $subBuyer->get('id'),
-                    'name' => $subBuyer->get('name')
+            $inventario = $entityManager->getEntity('InvPropiedades', $inventarioId);
+            if (!$inventario) {
+                return [
+                    'success' => false,
+                    'error' => 'Inventario no encontrado'
                 ];
             }
             
-            // Si no hay resultados, devolver array vacío
+            $subBuyers = [];
+            
+            try {
+                // Intentar obtener relación usando getRelation
+                $repository = $entityManager->getRepository('InvPropiedades');
+                $subBuyerCollection = $repository->getRelation($inventario, 'subBuyers')->find();
+                
+                foreach ($subBuyerCollection as $subBuyer) {
+                    $subBuyers[] = [
+                        'id' => $subBuyer->get('id'),
+                        'name' => $subBuyer->get('name'),
+                        'buyer' => $subBuyer->get('buyer')
+                    ];
+                }
+            } catch (\Exception $e) {
+                // Si falla getRelation, intentar con query directo a tabla intermedia
+                $pdo = $entityManager->getPDO();
+                
+                $stmt = $pdo->prepare("
+                    SELECT sb.id, sb.name, sb.buyer
+                    FROM inv_sub_buyer sb
+                    INNER JOIN inv_propiedades_inv_sub_buyer rel 
+                        ON rel.inv_sub_buyer_id = sb.id
+                    WHERE rel.inv_propiedades_id = :invId
+                        AND rel.deleted = 0
+                        AND sb.deleted = 0
+                ");
+                
+                $stmt->execute(['invId' => $inventarioId]);
+                $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+                
+                foreach ($rows as $row) {
+                    $subBuyers[] = [
+                        'id' => $row['id'],
+                        'name' => $row['name'],
+                        'buyer' => $row['buyer']
+                    ];
+                }
+            }
+            
             return [
                 'success' => true,
-                'data' => $result
+                'data' => $subBuyers
             ];
             
         } catch (\Exception $e) {
+            $GLOBALS['log']->error('Error en getSubBuyersPropiedad: ' . $e->getMessage());
+            
             return [
                 'success' => false,
-                'error' => 'Error al cargar sub buyers: ' . $e->getMessage()
+                'error' => 'Error: ' . $e->getMessage()
             ];
         }
     }
-
+    
     /**
-     * Obtener recaudos por tipo y default
+     * Obtener recaudos guardados para una propiedad según tipo
      */
-    public function getActionGetRecaudosByTipo(Request $request): array
-    {
-        $tipo = $request->getQueryParam('tipo');
-        $default = $request->getQueryParam('default');
-        
-        if (!$tipo) {
-            return [
-                'success' => false,
-                'error' => 'tipo es requerido'
-            ];
-        }
-        
-        $entityManager = $this->getContainer()->get('entityManager');
-        
-        try {
-            // Construir condiciones
-            $conditions = [
-                'deleted' => false
-            ];
-            
-            // Si es un array de tipos (para legal)
-            if (is_array($tipo)) {
-                $conditions['tipo'] = $tipo;
-            } else {
-                $conditions['tipo'] = $tipo;
-            }
-            
-            // Filtrar por default si se especifica
-            if ($default !== null) {
-                $conditions['default'] = ($default === 'true' || $default === true);
-            }
-            
-            // Buscar en InvRecaudos
-            $query = $entityManager->getRepository('InvRecaudos')
-                ->select(['id', 'name', 'descripcion', 'default'])
-                ->where($conditions)
-                ->order('name', 'ASC');
-            
-            $recaudos = $query->find();
-            
-            $result = [];
-            foreach ($recaudos as $recaudo) {
-                $result[] = [
-                    'id' => $recaudo->get('id'),
-                    'name' => $recaudo->get('name'),
-                    'descripcion' => $recaudo->get('descripcion') ?: '',
-                    'default' => $recaudo->get('default')
-                ];
-            }
-            
-            return [
-                'success' => true,
-                'data' => $result
-            ];
-            
-        } catch (\Exception $e) {
-            return [
-                'success' => false,
-                'error' => 'Error al cargar recaudos: ' . $e->getMessage()
-            ];
-        }
-    }
-
     public function getActionGetRecaudosGuardados(Request $request): array
     {
         $propiedadId = $request->getQueryParam('propiedadId');
@@ -356,82 +184,352 @@ class InvPropiedades extends Record
         
         $entityManager = $this->getContainer()->get('entityManager');
         
-        try {
-            // Buscar el inventario de la propiedad
-            $inventario = $entityManager->getRepository('InvPropiedades')
-                ->where([
-                    'idPropiedadId' => $propiedadId,
-                    'deleted' => false
-                ])
-                ->findOne();
-            
-            $recaudos = [];
-            $esPorDefecto = false;
-            
-            if ($inventario) {
-                // Buscar recaudos relacionados a este inventario
-                $propiedadesRecaudos = $entityManager->getRepository('InvPropiedadesRecaudos')
-                    ->distinct()
-                    ->join('idRecaudos')
-                    ->where([
-                        'idInvPropiedadesId' => $inventario->get('id'),
-                        'deleted' => false
-                    ])
-                    ->find();
+        // Buscar inventario
+        $inventario = $entityManager->getRepository('InvPropiedades')
+            ->where(['idPropiedadId' => $propiedadId, 'deleted' => false])
+            ->findOne();
+        
+        if (!$inventario) {
+            return [
+                'success' => false,
+                'error' => 'Inventario no encontrado'
+            ];
+        }
+        
+        // Buscar recaudos guardados en InvPropiedadesRecaudos
+        $recaudosGuardados = $entityManager->getRepository('InvPropiedadesRecaudos')
+            ->join('idRecaudos')
+            ->where([
+                'idInvPropiedadesId' => $inventario->get('id'),
+                'idRecaudos.tipo' => $tipo,
+                'deleted' => false
+            ])
+            ->find();
+        
+        $recaudos = [];
+        $esPorDefecto = true;
+        
+        foreach ($recaudosGuardados as $rel) {
+            $recaudo = $rel->get('idRecaudos');
+            if ($recaudo) {
+                $recaudos[] = [
+                    'id' => $recaudo->get('id'),
+                    'name' => $recaudo->get('name'),
+                    'descripcion' => $recaudo->get('descripcion') ?? '',
+                    'default' => $recaudo->get('default') ?? false,
+                    'tipo' => $recaudo->get('tipo'),
+                    'estado' => $rel->get('estado') ?? 'Modificar/No Tiene'
+                ];
                 
-                // Filtrar por tipo
-                foreach ($propiedadesRecaudos as $propRecaudo) {
-                    $recaudo = $propRecaudo->get('idRecaudos');
-                    if ($recaudo && $recaudo->get('tipo') == $tipo) {
-                        $recaudos[] = [
-                            'id' => $recaudo->get('id'),
-                            'name' => $recaudo->get('name'),
-                            'descripcion' => $recaudo->get('descripcion'),
-                            'default' => $recaudo->get('default'),
-                            'tipo' => $recaudo->get('tipo'),
-                            'estado' => $propRecaudo->get('estado') // Estado guardado
-                        ];
-                    }
+                if (!$recaudo->get('default')) {
+                    $esPorDefecto = false;
                 }
             }
+        }
+        
+        // Si NO hay recaudos guardados, cargar los por defecto
+        if (count($recaudos) === 0) {
+            $recaudosDefault = $entityManager->getRepository('InvRecaudos')
+                ->where([
+                    'tipo' => $tipo,
+                    'default' => true,
+                    'deleted' => false
+                ])
+                ->find();
             
-            // Si no hay recaudos guardados, cargar los por defecto
-            if (empty($recaudos)) {
-                $esPorDefecto = true;
-                
-                $recaudosDefault = $entityManager->getRepository('InvRecaudos')
-                    ->where([
-                        'tipo' => $tipo,
-                        'default' => true,
-                        'deleted' => false
-                    ])
-                    ->find();
-                
-                foreach ($recaudosDefault as $recaudo) {
-                    $recaudos[] = [
-                        'id' => $recaudo->get('id'),
-                        'name' => $recaudo->get('name'),
-                        'descripcion' => $recaudo->get('descripcion'),
-                        'default' => true,
-                        'tipo' => $recaudo->get('tipo'),
-                        'estado' => 'Modificar' // Estado por defecto
-                    ];
-                }
+            foreach ($recaudosDefault as $recaudo) {
+                $recaudos[] = [
+                    'id' => $recaudo->get('id'),
+                    'name' => $recaudo->get('name'),
+                    'descripcion' => $recaudo->get('descripcion') ?? '',
+                    'default' => true,
+                    'tipo' => $recaudo->get('tipo'),
+                    'estado' => 'Modificar/No Tiene'
+                ];
+            }
+            
+            $esPorDefecto = true;
+        }
+        
+        return [
+            'success' => true,
+            'data' => [
+                'recaudos' => $recaudos,
+                'esPorDefecto' => $esPorDefecto
+            ]
+        ];
+    }
+    
+    /**
+     * Obtener todos los recaudos disponibles por tipo
+     */
+    public function getActionGetRecaudosByTipo(Request $request): array
+    {
+        $tipo = $request->getQueryParam('tipo');
+        
+        if (!$tipo) {
+            return [
+                'success' => false,
+                'error' => 'tipo es requerido'
+            ];
+        }
+        
+        $entityManager = $this->getContainer()->get('entityManager');
+        
+        $recaudos = $entityManager->getRepository('InvRecaudos')
+            ->where([
+                'tipo' => $tipo,
+                'deleted' => false
+            ])
+            ->order('name', 'ASC')
+            ->find();
+        
+        $resultado = [];
+        foreach ($recaudos as $recaudo) {
+            $resultado[] = [
+                'id' => $recaudo->get('id'),
+                'name' => $recaudo->get('name'),
+                'descripcion' => $recaudo->get('descripcion') ?? '',
+                'default' => $recaudo->get('default') ?? false,
+                'tipo' => $recaudo->get('tipo')
+            ];
+        }
+        
+        return [
+            'success' => true,
+            'data' => $resultado
+        ];
+    }
+    
+    /**
+     * Obtener sub buyers disponibles por tipo de buyer
+     */
+    public function getActionGetSubBuyersByBuyer(Request $request): array
+    {
+        $buyer = $request->getQueryParam('buyer');
+        
+        if (!$buyer) {
+            return [
+                'success' => false,
+                'error' => 'buyer es requerido'
+            ];
+        }
+        
+        try {
+            $entityManager = $this->getContainer()->get('entityManager');
+            
+            $subBuyers = $entityManager->getRepository('InvSubBuyer')
+                ->where([
+                    'buyer' => $buyer,
+                    'deleted' => false
+                ])
+                ->order('name', 'ASC')
+                ->find();
+            
+            $resultado = [];
+            foreach ($subBuyers as $subBuyer) {
+                $resultado[] = [
+                    'id' => $subBuyer->get('id'),
+                    'name' => $subBuyer->get('name'),
+                    'buyer' => $subBuyer->get('buyer')
+                ];
             }
             
             return [
                 'success' => true,
-                'data' => [
-                    'recaudos' => $recaudos,
-                    'esPorDefecto' => $esPorDefecto
-                ]
+                'data' => $resultado
             ];
             
         } catch (\Exception $e) {
+            $GLOBALS['log']->error('Error en getSubBuyersByBuyer: ' . $e->getMessage());
+            
             return [
                 'success' => false,
-                'error' => 'Error al cargar recaudos guardados: ' . $e->getMessage()
+                'error' => 'Error: ' . $e->getMessage()
             ];
+        }
+    }
+    
+    /**
+     * Guardar inventario completo
+     */
+    public function postActionSave(Request $request): array
+    {
+        $data = $request->getParsedBody();
+        $inventarioId = $data['inventarioId'] ?? null;
+        
+        if (!$inventarioId) {
+            throw new BadRequest('inventarioId es requerido');
+        }
+        
+        $entityManager = $this->getContainer()->get('entityManager');
+        
+        $inventario = $entityManager->getEntity('InvPropiedades', $inventarioId);
+        if (!$inventario) {
+            throw new BadRequest('Inventario no encontrado');
+        }
+        
+        // Actualizar campos básicos
+        $updates = [
+            'tipoPersona' => $data['tipoPersona'] ?? $inventario->get('tipoPersona'),
+            'buyer' => $data['buyer'] ?? $data['buyerPersona'] ?? $inventario->get('buyer'),
+            'demanda' => $data['demanda'] ?? $inventario->get('demanda'),
+            'precio' => $data['precio'] ?? $inventario->get('precio'),
+            'ubicacion' => $data['ubicacion'] ?? $inventario->get('ubicacion'),
+            'exclusividad' => $data['exclusividad'] ?? $inventario->get('exclusividad'),
+            'apoderado' => isset($data['apoderado']) ? 
+                ($data['apoderado'] === 'true' || $data['apoderado'] === true) : 
+                $inventario->get('apoderado'),
+            'estatusPropiedad' => $data['estatusPropiedad'] ?? 'Rojo'
+        ];
+        
+        $inventario->set($updates);
+        $entityManager->saveEntity($inventario);
+        
+        // Guardar sub buyers (linkMultiple)
+        if (isset($data['subBuyers']) && is_array($data['subBuyers'])) {
+            $this->guardarSubBuyers($inventario, $data['subBuyers']);
+        }
+        
+        // Guardar recaudos legales
+        if (isset($data['recaudosLegal']) && is_array($data['recaudosLegal'])) {
+            $this->guardarRecaudos($inventario, $data['recaudosLegal'], $data['valoresRecaudosLegal'] ?? []);
+        }
+        
+        // Guardar recaudos mercadeo
+        if (isset($data['recaudosMercadeo']) && is_array($data['recaudosMercadeo'])) {
+            $this->guardarRecaudos($inventario, $data['recaudosMercadeo'], $data['valoresRecaudosMercadeo'] ?? []);
+        }
+        
+        // Guardar recaudos apoderado
+        if (isset($data['recaudosApoderado']) && is_array($data['recaudosApoderado'])) {
+            $this->guardarRecaudos($inventario, $data['recaudosApoderado'], $data['valoresRecaudosApoderado'] ?? []);
+        }
+        
+        return [
+            'success' => true,
+            'message' => 'Inventario guardado exitosamente'
+        ];
+    }
+    
+    /**
+     * Guardar sub buyers usando linkMultiple
+     * CORREGIDO: Sin usar isRelationExists()
+     */
+    private function guardarSubBuyers($inventario, $subBuyersIds)
+    {
+        $entityManager = $this->getContainer()->get('entityManager');
+        $repository = $entityManager->getRepository('InvPropiedades');
+        
+        try {
+            // Obtener sub buyers actuales
+            $actuales = $repository->getRelation($inventario, 'subBuyers')->find();
+            $actualesIds = [];
+            foreach ($actuales as $sb) {
+                $actualesIds[] = $sb->get('id');
+            }
+            
+            // Eliminar los que ya no están
+            foreach ($actualesIds as $actualId) {
+                if (!in_array($actualId, $subBuyersIds)) {
+                    $repository->unrelate($inventario, 'subBuyers', $actualId);
+                }
+            }
+            
+            // Agregar los nuevos
+            foreach ($subBuyersIds as $newId) {
+                if (!in_array($newId, $actualesIds)) {
+                    $repository->relate($inventario, 'subBuyers', $newId);
+                }
+            }
+        } catch (\Exception $e) {
+            // Si falla con relación, usar método directo de BD
+            $pdo = $entityManager->getPDO();
+            
+            // Eliminar relaciones existentes
+            $stmt = $pdo->prepare("
+                UPDATE inv_propiedades_inv_sub_buyer 
+                SET deleted = 1 
+                WHERE inv_propiedades_id = :invId
+            ");
+            $stmt->execute(['invId' => $inventario->get('id')]);
+            
+            // Insertar nuevas relaciones
+            foreach ($subBuyersIds as $subBuyerId) {
+                $stmt = $pdo->prepare("
+                    INSERT INTO inv_propiedades_inv_sub_buyer 
+                    (inv_propiedades_id, inv_sub_buyer_id, deleted) 
+                    VALUES (:invId, :subBuyerId, 0)
+                    ON DUPLICATE KEY UPDATE deleted = 0
+                ");
+                $stmt->execute([
+                    'invId' => $inventario->get('id'),
+                    'subBuyerId' => $subBuyerId
+                ]);
+            }
+        }
+    }
+    
+    /**
+     * Guardar recaudos en InvPropiedadesRecaudos
+     */
+    private function guardarRecaudos($inventario, $recaudosArray, $valoresArray)
+    {
+        $entityManager = $this->getContainer()->get('entityManager');
+        $inventarioId = $inventario->get('id');
+        
+        // Eliminar recaudos existentes de este inventario
+        $existentes = $entityManager->getRepository('InvPropiedadesRecaudos')
+            ->where(['idInvPropiedadesId' => $inventarioId])
+            ->find();
+        
+        foreach ($existentes as $existente) {
+            $entityManager->removeEntity($existente);
+        }
+        
+        // IMPORTANTE: Verificar que recaudosArray es array
+        if (!is_array($recaudosArray)) {
+            $GLOBALS['log']->warning('guardarRecaudos recibió no-array: ' . gettype($recaudosArray));
+            return;
+        }
+        
+        // Crear nuevos registros
+        foreach ($recaudosArray as $recaudoData) {
+            // CORREGIDO: Verificar si es array u objeto
+            if (is_object($recaudoData)) {
+                // Convertir objeto a array
+                $recaudoData = (array) $recaudoData;
+            }
+            
+            if (!is_array($recaudoData)) {
+                continue;
+            }
+            
+            $recaudoId = $recaudoData['recaudoId'] ?? null;
+            
+            // CORREGIDO: Verificar que valoresArray sea array
+            if (is_object($valoresArray)) {
+                $valoresArray = (array) $valoresArray;
+            }
+            
+            $estado = isset($valoresArray[$recaudoId]) ? 
+                    $valoresArray[$recaudoId] : 
+                    ($recaudoData['estado'] ?? 'Modificar/No Tiene');
+            
+            if (!$recaudoId) continue;
+            
+            try {
+                $relacion = $entityManager->getEntity('InvPropiedadesRecaudos');
+                $relacion->set([
+                    'idInvPropiedadesId' => $inventarioId,
+                    'idRecaudosId' => $recaudoId,
+                    'estado' => $estado
+                ]);
+                
+                $entityManager->saveEntity($relacion);
+            } catch (\Exception $e) {
+                $GLOBALS['log']->error('Error guardando recaudo ' . $recaudoId . ': ' . $e->getMessage());
+            }
         }
     }
 }

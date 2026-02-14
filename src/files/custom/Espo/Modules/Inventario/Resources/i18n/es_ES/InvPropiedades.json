@@ -1,36 +1,21 @@
 {
     "InvPropiedades": {
         "labels": {
-            "Create InvPropiedades": "Crear Inventario de Propiedad",
+            "Create InvPropiedades": "Crear Inventario Propiedad",
             "InvPropiedades": "Inventario Propiedades"
         },
         "fields": {
             "name": "Nombre",
             "idPropiedad": "Propiedad",
-            "tipoDePropiedad": "Tipo de Propiedad",
             "tipoPersona": "Tipo de Persona",
-            "buyer": "Buyer",
-            "subBuyer": "Sub Buyer",
-            "fotos": "Fotos",
-            "copy": "Copy",
-            "video": "Video",
-            "videoInsertado": "Video Insertado",
-            "metricas": "Métricas",
-            "rotulo": "Rótulo",
+            "buyer": "Tipo de Buyer",
+            "subBuyers": "Sub Buyers",
             "precio": "Precio",
-            "notaLegal": "Legal",
-            "notaMercadeo": "Mercadeo",
-            "notaPrecio": "Precio",
-            "notaExclusiva": "Exclusiva",
-            "notaUbicacion": "Ubicación",
             "ubicacion": "Ubicación",
             "exclusividad": "Exclusividad",
             "apoderado": "Apoderado",
             "demanda": "Demanda",
-            "createdAt": "Creado el",
-            "modifiedAt": "Modificado el",
-            "createdBy": "Creado por",
-            "modifiedBy": "Modificado por"
+            "estatusPropiedad": "Estatus de Propiedad"
         },
         "options": {
             "tipoPersona": {
@@ -43,73 +28,18 @@
                 "Arrendador": "Arrendador",
                 "Arrendatario": "Arrendatario"
             },
-            "fotos": {
-                "Modificar": "Modificar",
-                "Revisar": "Revisar",
-                "Adecuado": "Adecuado"
-            },
-            "copy": {
-                "Modificar": "Modificar",
-                "Revisar": "Revisar",
-                "Adecuado": "Adecuado"
-            },
-            "video": {
-                "Modificar": "Modificar",
-                "Revisar": "Revisar",
-                "Adecuado": "Adecuado"
-            },
-            "videoInsertado": {
-                "Modificar": "Modificar",
-                "Revisar": "Revisar",
-                "Adecuado": "Adecuado"
-            },
-            "metricas": {
-                "Modificar": "Modificar",
-                "Revisar": "Revisar",
-                "Adecuado": "Adecuado"
-            },
-            "rotulo": {
-                "Modificar": "Modificar",
-                "Revisar": "Revisar",
-                "Adecuado": "Adecuado"
-            },
             "precio": {
-                "Debajo del rango": "Debajo del rango",
+                "Fuera del rango de precio": "Fuera del rango de precio",
                 "En rango": "En rango",
-                "Sobre el rango": "Sobre el rango"
-            },
-            "notaLegal": {
-                "Modificar": "Modificar",
-                "Revisar": "Revisar",
-                "Adecuado": "Adecuado"
-            },
-            "notaMercadeo": {
-                "Modificar": "Modificar",
-                "Revisar": "Revisar",
-                "Adecuado": "Adecuado"
-            },
-            "notaPrecio": {
-                "Modificar": "Modificar",
-                "Revisar": "Revisar",
-                "Adecuado": "Adecuado"
-            },
-            "notaExclusiva": {
-                "Modificar": "Modificar",
-                "Revisar": "Revisar",
-                "Adecuado": "Adecuado"
-            },
-            "notaUbicacion": {
-                "Modificar": "Modificar",
-                "Revisar": "Revisar",
-                "Adecuado": "Adecuado"
+                "Cercano al rango de precio": "Cercano al rango de precio"
             },
             "ubicacion": {
-                "Modificar": "Modificar",
-                "Revisar": "Revisar",
-                "Adecuado": "Adecuado"
+                "Ubicación no atractiva": "Ubicación no atractiva",
+                "Ubicación medianamente atractiva": "Ubicación medianamente atractiva",
+                "Ubicación atractiva": "Ubicación atractiva"
             },
             "exclusividad": {
-                "No exclusividad": "No exclusividad",
+                "Sin exclusividad": "Sin exclusividad",
                 "Exclusividad interna de CENTURY con contrato firmado": "Exclusividad interna de CENTURY con contrato firmado",
                 "Exclusividad pura o total con contrato firmado": "Exclusividad pura o total con contrato firmado"
             },
@@ -117,12 +47,42 @@
                 "Baja demanda": "Baja demanda",
                 "Media demanda": "Media demanda",
                 "Alta demanda": "Alta demanda"
+            },
+            "estatusPropiedad": {
+                "Verde": "Verde",
+                "Amarillo": "Amarillo",
+                "Rojo": "Rojo"
             }
         },
         "links": {
             "idPropiedad": "Propiedad",
-            "recaudos": "Recaudos",
-            "subBuyers": "Sub Buyers"
+            "subBuyers": "Sub Buyers",
+            "recaudos": "Recaudos"
+        },
+        "tooltips": {
+            "estatusPropiedad": "Calculado automáticamente según Legal, Mercadeo, Precio, Exclusividad y Ubicación"
+        }
+    },
+    "InvSubBuyer": {
+        "labels": {
+            "Create InvSubBuyer": "Crear Sub Buyer",
+            "InvSubBuyer": "Sub Buyers"
+        },
+        "fields": {
+            "name": "Nombre",
+            "buyer": "Tipo de Buyer",
+            "invPropiedades": "Propiedades"
+        },
+        "options": {
+            "buyer": {
+                "Comprador": "Comprador",
+                "Vendedor": "Vendedor",
+                "Arrendador": "Arrendador",
+                "Arrendatario": "Arrendatario"
+            }
+        },
+        "links": {
+            "invPropiedades": "Propiedades"
         }
     }
 }

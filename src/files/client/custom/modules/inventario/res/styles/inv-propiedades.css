@@ -759,4 +759,62 @@
     .info-value {
         font-size: 12px;
     }
+    
+}
+
+.select-otros {
+    font-weight: 600;
+    color: white;
+    border: 2px solid #E6E6E6;
+    padding: 10px 15px;
+    text-align: center;
+}
+
+.select-verde {
+    background-color: #27ae60 !important;
+    border-color: #27ae60 !important;
+    color: white !important;
+}
+
+.select-amarillo {
+    background-color: #f39c12 !important;
+    border-color: #f39c12 !important;
+    color: white !important;
+}
+
+.select-rojo {
+    background-color: #e74c3c !important;
+    border-color: #e74c3c !important;
+    color: white !important;
+}
+
+.select-otros option {
+    background-color: white;
+    color: #333;
+    padding: 10px;
+}
+
+/* Iconos de semáforo en color */
+.icon-verde {
+    color: #27ae60 !important;
+}
+
+.icon-amarillo {
+    color: #f39c12 !important;
+}
+
+.icon-rojo {
+    color: #e74c3c !important;
+}
+
+.badge-color {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    border: 1px solid #ddd;
+}
+
+.panel-title .nota-percentaje .badge-color {
+    vertical-align: middle;
 }
