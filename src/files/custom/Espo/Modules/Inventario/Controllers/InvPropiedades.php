@@ -42,14 +42,19 @@ class InvPropiedades extends Base
                 'name' => 'Inventario - ' . $propiedad->get('name'),
                 'tipoPersona' => 'Natural',
                 'buyer' => 'Comprador',
-                'precio' => 'En rango',
-                'ubicacion' => 'Ubicación no atractiva',
-                'exclusividad' => 'Sin exclusividad',
+                
+                // VALORES POR DEFECTO ROJOS
+                'precio' => 'Fuera del rango de precio',          // ROJO
+                'ubicacion' => 'Ubicación no atractiva',          // ROJO
+                'exclusividad' => 'Sin exclusividad',             // ROJO
+                'demanda' => 'Baja demanda',                      // ROJO (CORREGIDO)
+                
                 'apoderado' => false,
-                'demanda' => 'Media demanda',
                 'estatusPropiedad' => 'Rojo'
             ]);
             $entityManager->saveEntity($inventario);
+            
+            $GLOBALS['log']->info('✅ Inventario creado con valores por defecto ROJOS');
         }
         
         return [

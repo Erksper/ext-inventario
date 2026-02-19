@@ -29,7 +29,7 @@
         "precio": {
             "type": "enum",
             "options": ["Fuera del rango de precio", "En rango", "Cercano al rango de precio"],
-            "default": "En rango",
+            "default": "Fuera del rango de precio",
             "style": {
                 "Cercano al rango de precio": "warning",
                 "En rango": "success",
@@ -62,7 +62,7 @@
         "demanda": {
             "type": "enum",
             "options": ["Baja demanda", "Media demanda", "Alta demanda"],
-            "default": "Media demanda"
+            "default": "Baja demanda"
         },
         "estatusPropiedad": {
             "type": "enum",

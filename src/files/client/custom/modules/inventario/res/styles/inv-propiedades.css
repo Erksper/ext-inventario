@@ -818,3 +818,118 @@
 .panel-title .nota-percentaje .badge-color {
     vertical-align: middle;
 }
+
+.subbuyers-checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 12px;
+    margin-top: 10px;
+}
+
+/* Cada opción de SubBuyer */
+.subbuyer-checkbox-option {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    border: 2px solid #E6E6E6;
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.subbuyer-checkbox-option:hover {
+    border-color: #B8A279;
+    box-shadow: 0 2px 8px rgba(184, 162, 121, 0.15);
+    transform: translateY(-1px);
+}
+
+/* Checkbox oculto pero funcional */
+.subbuyer-checkbox-option input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+}
+
+/* Custom checkbox visual */
+.subbuyer-checkbox-option .checkbox-custom {
+    width: 22px;
+    height: 22px;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    margin-right: 12px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+/* Texto del label */
+.subbuyer-checkbox-option .checkbox-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #363438;
+    flex: 1;
+}
+
+/* Estado checked */
+.subbuyer-checkbox-option input[type="checkbox"]:checked ~ .checkbox-custom {
+    background: #B8A279;
+    border-color: #B8A279;
+}
+
+.subbuyer-checkbox-option input[type="checkbox"]:checked ~ .checkbox-custom::after {
+    content: '✓';
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.subbuyer-checkbox-option input[type="checkbox"]:checked ~ .checkbox-label {
+    color: #B8A279;
+    font-weight: 600;
+}
+
+/* Borde destacado cuando está checked */
+.subbuyer-checkbox-option:has(input:checked) {
+    border-color: #B8A279;
+    background: rgba(184, 162, 121, 0.05);
+}
+
+/* Estado disabled */
+.subbuyer-checkbox-option.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.subbuyer-checkbox-option.disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* Mensaje cuando no hay opciones */
+.subbuyers-no-options {
+    text-align: center;
+    padding: 30px;
+    color: #999;
+    font-size: 14px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .subbuyers-checkbox-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .subbuyer-checkbox-option {
+        padding: 10px 12px;
+    }
+    
+    .subbuyer-checkbox-option .checkbox-label {
+        font-size: 13px;
+    }
+}

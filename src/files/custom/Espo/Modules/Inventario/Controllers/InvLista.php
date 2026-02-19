@@ -331,7 +331,16 @@ class InvLista extends Record
         if (is_object($data)) {
             $data = (array) $data;
         }
+        
         $propiedadIds = $data['propiedadIds'] ?? [];
+        
+        if (!is_array($propiedadIds)) {
+            if (is_object($propiedadIds)) {
+                $propiedadIds = (array) $propiedadIds;
+            } else {
+                $propiedadIds = [];
+            }
+        }
         
         if (empty($propiedadIds)) {
             return [
@@ -340,35 +349,43 @@ class InvLista extends Record
             ];
         }
         
-
-        $entityManager = $this->getContainer()->get('entityManager');
-        
-        $result = [];
-        
-        foreach ($propiedadIds as $propiedadId) {
-            // Buscar InvPropiedades relacionado
-            $inventario = $entityManager->getRepository('InvPropiedades')
-                ->where([
-                    'idPropiedadId' => $propiedadId,
-                    'deleted' => false
-                ])
-                ->findOne();
+        try {
+            $entityManager = $this->getContainer()->get('entityManager');
             
-            if ($inventario) {
-                $result[$propiedadId] = [
-                    'notaLegal' => $inventario->get('notaLegal'),
-                    'notaMercadeo' => $inventario->get('notaMercadeo'),
-                    'notaPrecio' => $inventario->get('notaPrecio'),
-                    'notaExclusiva' => $inventario->get('notaExclusiva'),
-                    'notaUbicacion' => $inventario->get('notaUbicacion')
-                ];
+            $resultado = [];
+            
+            foreach ($propiedadIds as $propiedadId) {
+                // Buscar InvPropiedades por propiedadId (campo idPropiedadId)
+                $inventario = $entityManager->getRepository('InvPropiedades')
+                    ->where([
+                        'idPropiedadId' => $propiedadId,
+                        'deleted' => false
+                    ])
+                    ->findOne();
+                
+                if ($inventario) {
+                    $resultado[$propiedadId] = [
+                        'id' => $inventario->get('id'),
+                        'estatusPropiedad' => $inventario->get('estatusPropiedad') ?? 'Sin calcular',
+                        'demanda' => $inventario->get('demanda') ?? 'Sin definir',
+                        'apoderado' => $inventario->get('apoderado') ?? false
+                    ];
+                }
             }
+            
+            return [
+                'success' => true,
+                'data' => $resultado
+            ];
+            
+        } catch (\Exception $e) {
+            $GLOBALS['log']->error('Error en getInventarioData: ' . $e->getMessage());
+            
+            return [
+                'success' => false,
+                'error' => 'Error: ' . $e->getMessage()
+            ];
         }
-        
-        return [
-            'success' => true,
-            'data' => $result
-        ];
     }
 
     public function getActionGetPropiedadInfo(Request $request): array

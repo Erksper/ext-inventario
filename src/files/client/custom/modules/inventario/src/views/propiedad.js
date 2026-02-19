@@ -218,10 +218,26 @@ define('inventario:views/propiedad', [
                 self.togglePanel($(this).closest('.panel-heading')[0]);
             });
 
+            this.$el.find('#buyerPersona').on('change', function (e) {
+                var buyerSeleccionado = $(e.currentTarget).val();
+                
+                // Limpiar selecciones anteriores
+                self.subBuyersSeleccionados = [];
+                
+                // Cargar nuevos sub buyers
+                self.cargarSubBuyersDisponibles(buyerSeleccionado);
+            });
+
+
             // Botones de navegación
             this.$el.on('click', '[data-action="volver"], [data-action="cancelar"]', function () {
+                console.log('🔄 Volviendo a lista (recarga completa)');
+                // Opción 1: Recargar completamente
                 window.location.href = '#InvLista';
-                window.location.reload();   
+                window.location.reload();
+                
+                // Opción 2 (alternativa): Solo navegar
+                // self.getRouter().navigate('#InvLista', { trigger: true });
             });
 
             this.$el.on('click', '[data-action="guardar"]', function () {
@@ -564,10 +580,11 @@ define('inventario:views/propiedad', [
         },
 
         mostrarInfoOtros: function () {
-            var exclusividad = this.inventarioData.exclusividad || 'Sin exclusividad';
-            var precio = this.inventarioData.precio || 'En rango';
-            var ubicacion = this.inventarioData.ubicacion || 'Ubicación no atractiva';
-            var demanda = this.inventarioData.demanda || 'Media demanda';
+            // VALORES POR DEFECTO: TODOS ROJOS 
+            var exclusividad = this.inventarioData.exclusividad || 'Sin exclusividad';  // ROJO
+            var precio = this.inventarioData.precio || 'Fuera del rango de precio';     // ROJO
+            var ubicacion = this.inventarioData.ubicacion || 'Ubicación no atractiva';  // ROJO
+            var demanda = this.inventarioData.demanda || 'Baja demanda';                // ROJO
             
             this.$el.find('#select-exclusividad').val(exclusividad);
             this.$el.find('#select-precio').val(precio);
@@ -585,53 +602,89 @@ define('inventario:views/propiedad', [
         inicializarSelect2SubBuyers: function () {
             var $select = this.$el.find('#subBuyerPersona');
             
-            if ($select.length === 0) return;
+            if ($select.length === 0) {
+                console.warn('⚠️ No se encontró #subBuyerPersona');
+                return;
+            }
             
-            // Inicializar Select2 para mejor UX en multi-select
-            if (typeof $select.select2 === 'function') {
+            // IMPORTANTE: Verificar que Select2 esté disponible
+            if (typeof $select.select2 !== 'function') {
+                console.warn('⚠️ Select2 no está disponible');
+                return;
+            }
+            
+            try {
+                // Inicializar Select2 con configuración para múltiples
                 $select.select2({
                     placeholder: 'Seleccione sub buyers',
                     allowClear: true,
+                    multiple: true, // HABILITADO
                     width: '100%'
                 });
+                
+                console.log('✅ Select2 inicializado para múltiples SubBuyers');
+            } catch (error) {
+                console.error('Error inicializando Select2:', error);
             }
         },
 
         cargarSubBuyersDisponibles: function (buyerTipo) {
             var self = this;
-            var $select = this.$el.find('#subBuyerPersona');
+            var $container = this.$el.find('#subbuyers-checkbox-container');
             
-            // CORREGIDO: Usar el endpoint correcto
+            // Mostrar loading
+            $container.html('<div class="text-center" style="padding: 20px; color: #999;"><i class="fas fa-spinner fa-spin"></i> Cargando opciones...</div>');
+            
             Espo.Ajax.getRequest('InvPropiedades/action/getSubBuyersByBuyer', {
                 buyer: buyerTipo
             })
             .then(function (response) {
-                $select.empty();
-                
                 if (response.success && response.data && response.data.length > 0) {
+                    // Renderizar checkboxes
+                    var html = '';
+                    
                     response.data.forEach(function (subBuyer) {
-                        $select.append(
-                            $('<option></option>')
-                                .attr('value', subBuyer.id)
-                                .text(subBuyer.name)
-                        );
+                        var isChecked = self.subBuyersSeleccionados.includes(subBuyer.id) ? 'checked' : '';
+                        
+                        html += '<label class="subbuyer-checkbox-option">';
+                        html += '  <input type="checkbox" ';
+                        html += '    class="subbuyer-checkbox" ';
+                        html += '    value="' + subBuyer.id + '" ';
+                        html += '    data-name="' + self.escapeHtml(subBuyer.name) + '" ';
+                        html += '    ' + isChecked + '>';
+                        html += '  <span class="checkbox-custom"></span>';
+                        html += '  <span class="checkbox-label">' + self.escapeHtml(subBuyer.name) + '</span>';
+                        html += '</label>';
                     });
+                    
+                    $container.html(html);
+                    
+                    // Event listener para cambios
+                    $container.find('.subbuyer-checkbox').on('change', function() {
+                        self.actualizarSubBuyersSeleccionados();
+                    });
+                    
+                    console.log('✅ SubBuyers renderizados como checkboxes:', response.data.length);
                 } else {
-                    $select.append('<option value="" disabled>No hay sub buyers disponibles</option>');
-                }
-                
-                // Restaurar selección si existe
-                if (self.subBuyersSeleccionados.length > 0) {
-                    $select.val(self.subBuyersSeleccionados);
-                    if (typeof $select.select2 === 'function') {
-                        $select.trigger('change.select2');
-                    }
+                    $container.html('<div class="subbuyers-no-options"><i class="fas fa-info-circle"></i> No hay sub buyers disponibles para este tipo</div>');
                 }
             })
             .catch(function (error) {
                 console.error('Error cargando sub buyers:', error);
-                $select.html('<option value="" disabled>Error al cargar sub buyers</option>');
+                $container.html('<div class="subbuyers-no-options" style="color: #e74c3c;"><i class="fas fa-exclamation-circle"></i> Error al cargar sub buyers</div>');
             });
+        },
+
+        actualizarSubBuyersSeleccionados: function() {
+            var seleccionados = [];
+            
+            this.$el.find('.subbuyer-checkbox:checked').each(function() {
+                seleccionados.push($(this).val());
+            });
+            
+            this.subBuyersSeleccionados = seleccionados;
+            
+            console.log('📋 SubBuyers seleccionados:', seleccionados);
         },
 
         // LÍNEA ~390 - Modificar cargarSubBuyersSeleccionados
@@ -652,25 +705,29 @@ define('inventario:views/propiedad', [
                         return sb.id;
                     });
                     
-                    // Marcar en el select
-                    var $select = self.$el.find('#subBuyerPersona');
-                    $select.val(self.subBuyersSeleccionados);
-                    if (typeof $select.select2 === 'function') {
-                        $select.trigger('change.select2');
-                    }
+                    // Marcar checkboxes correspondientes
+                    self.subBuyersSeleccionados.forEach(function(sbId) {
+                        self.$el.find('.subbuyer-checkbox[value="' + sbId + '"]').prop('checked', true);
+                    });
                     
-                    console.log('✅ Sub buyers cargados:', self.subBuyersSeleccionados);
+                    console.log('✅ Sub buyers cargados y marcados:', self.subBuyersSeleccionados);
                 }
             })
             .catch(function (error) {
                 console.error('Error cargando sub buyers seleccionados:', error);
-                // NO es error crítico, continuar
             });
         },
 
         obtenerSubBuyersSeleccionados: function () {
-            var $select = this.$el.find('#subBuyerPersona');
-            return $select.val() || [];
+            var seleccionados = [];
+            
+            this.$el.find('.subbuyer-checkbox:checked').each(function() {
+                seleccionados.push($(this).val());
+            });
+            
+            console.log('📤 Enviando SubBuyers:', seleccionados);
+            
+            return seleccionados;
         },
 
         // ========== CARGA DE RECAUDOS ==========
@@ -1231,6 +1288,7 @@ define('inventario:views/propiedad', [
             if (porcentaje >= 90) color = '#27ae60';
             else if (porcentaje >= 80) color = '#f39c12';
             
+            // SOLO CUADRO DE COLOR, SIN %
             this.$el.find('#nota-legal')
                 .html('<span class="badge-color" style="background-color: ' + color + ';"></span>');
         },
@@ -1258,6 +1316,7 @@ define('inventario:views/propiedad', [
             if (porcentaje >= 90) color = '#27ae60';
             else if (porcentaje >= 70) color = '#f39c12';
             
+            // SOLO CUADRO DE COLOR, SIN %
             this.$el.find('#nota-mercadeo')
                 .html('<span class="badge-color" style="background-color: ' + color + ';"></span>');
         },
@@ -1266,7 +1325,8 @@ define('inventario:views/propiedad', [
             var tieneApoderado = this.$el.find('input[name="apoderado"]:checked').val() === 'true';
             
             if (!tieneApoderado) {
-                this.$el.find('#nota-apoderado').text('0%').css('color', '#95a5a6');
+                // SIN APODERADO: No mostrar nada o dejarlo vacío
+                this.$el.find('#nota-apoderado').html('');
                 return;
             }
             
@@ -1274,13 +1334,12 @@ define('inventario:views/propiedad', [
             var totalRecaudos = lista.mostrados.length;
             
             if (totalRecaudos === 0) {
-                this.$el.find('#nota-apoderado').text('0%').css('color', '#95a5a6');
+                this.$el.find('#nota-apoderado').html('');
                 return;
             }
             
             var completosRecaudos = 0;
             lista.mostrados.forEach(function(recaudo) {
-                // En apoderado: "Adecuado" = Lo tiene
                 if (this.valoresRecaudosApoderado[recaudo.id] === 'Adecuado') {
                     completosRecaudos++;
                 }
@@ -1293,7 +1352,9 @@ define('inventario:views/propiedad', [
             else if (porcentaje >= 70) color = '#f39c12';
             else if (porcentaje > 0) color = '#e74c3c';
             
-            this.$el.find('#nota-apoderado').text(porcentaje + '%').css('color', color);
+            // SOLO CUADRO DE COLOR, SIN % NI TEXTO
+            this.$el.find('#nota-apoderado')
+                .html('<span class="badge-color" style="background-color: ' + color + ';"></span>');
         },
 
         calcularEstatusPropiedad: function () {

@@ -429,18 +429,20 @@ define('inventario:views/list', [
                     if (response.success && response.data && response.data.recaudos) {
                         var recaudos = response.data.recaudos;
                         
-                        if (recaudos.length === 0) {
+                        // FILTRAR: Solo los que TIENE (Adecuado)
+                        var recaudosTiene = recaudos.filter(function(recaudo) {
+                            return recaudo.estado === 'Adecuado';
+                        });
+                        
+                        if (recaudosTiene.length === 0) {
                             $cell.html('<span style="color: #999; font-size: 12px;">Sin recaudos</span>');
                             return;
                         }
                         
                         var items = [];
-                        recaudos.forEach(function(recaudo) {
-                            var tiene = recaudo.estado === 'Adecuado';
-                            var texto = (tiene ? 'Tiene' : 'No tiene') + ' ' + recaudo.name;
-                            var color = tiene ? '#27ae60' : '#e74c3c';
-                            
-                            items.push('<div style="color: ' + color + '; font-size: 11px; line-height: 1.4; margin-bottom: 2px;">' + texto + '</div>');
+                        recaudosTiene.forEach(function(recaudo) {
+                            // TEXTO NEGRO, sin "Tiene"
+                            items.push('<div style="color: #000; font-size: 11px; line-height: 1.4; margin-bottom: 2px;">• ' + recaudo.name + '</div>');
                         });
                         
                         $cell.html(items.join(''));
@@ -468,28 +470,28 @@ define('inventario:views/list', [
             // NUEVA ESTRUCTURA DE COLUMNAS
             var html = '<div class="tabla-propiedades"><table><thead><tr>';
             html += '<th style="width: 100px;">Días en el mercado</th>';
-            html += '<th style="width: 250px;">Dirección</th>';
+            html += '<th style="width: 300px;">Dirección</th>';  // AUMENTADO de 250px a 300px
             html += '<th style="width: 150px;">Asesor</th>';
             html += '<th style="width: 100px;">Tipo</th>';
             html += '<th style="width: 100px;">Operación</th>';
-            html += '<th style="width: 90px;">Estatus</th>';  // MOVIDO
-            html += '<th style="width: 90px;">Demanda</th>';  // NUEVO
-            html += '<th style="width: 250px;">Apoderado</th>';  // NUEVO
-            html += '<th style="width: 100px;">Acciones</th>';
+            html += '<th style="width: 90px;">Estatus</th>';
+            html += '<th style="width: 90px;">Demanda</th>';
+            html += '<th style="width: 250px;">Apoderado</th>';
+            html += '<th style="width: 80px;">Acciones</th>';  // REDUCIDO de 100px a 80px
             html += '</tr></thead><tbody>';
             
             this.propiedadesFiltradas.forEach(function (propiedad) {
                 var diasEnMercado = this.calcularDiasEnMercado(propiedad.fechaAlta);
                 
+                // DIRECCIÓN COMPLETA - SIN CORTAR
                 var direccion = '';
                 if (propiedad.calle) direccion += propiedad.calle;
                 if (propiedad.numero) direccion += ' ' + propiedad.numero;
                 if (propiedad.urbanizacion) direccion += ', ' + propiedad.urbanizacion;
                 if (!direccion) direccion = '-';
                 
-                if (direccion.length > 40) {
-                    direccion = direccion.substring(0, 37) + '...';
-                }
+                // NO CORTAR - mostrar completo con title para tooltip
+                var direccionMostrar = direccion;
                 
                 var asesorName = propiedad.asesorNombre || '-';
                 if (asesorName.length > 25) {
@@ -509,7 +511,10 @@ define('inventario:views/list', [
                 
                 html += '<tr data-id="' + propiedad.id + '" style="cursor: pointer;">';
                 html += '<td style="font-size: 13px; font-weight: 600; text-align: center;">' + diasEnMercado + '</td>';
-                html += '<td title="' + (propiedad.calle + ' ' + propiedad.numero + ', ' + propiedad.urbanizacion) + '" style="font-size: 13px;">' + direccion + '</td>';
+                
+                // DIRECCIÓN COMPLETA
+                html += '<td title="' + direccion + '" style="font-size: 13px; word-wrap: break-word; white-space: normal;">' + direccionMostrar + '</td>';
+                
                 html += '<td title="' + (propiedad.asesorNombre || '-') + '" style="font-size: 13px;">' + asesorName + '</td>';
                 html += '<td style="font-size: 13px;">' + (propiedad.tipoPropiedad || '-') + '</td>';
                 html += '<td style="font-size: 13px;">' + (propiedad.tipoOperacion || '-') + '</td>';
@@ -528,8 +533,8 @@ define('inventario:views/list', [
                     html += '<td id="' + apoderadoCellId + '" style="font-size: 12px; padding: 10px;"><span style="color: #999;">Sin apoderado</span></td>';
                 }
                 
-                // Acciones
-                html += '<td><button class="btn btn-sm btn-view" data-id="' + propiedad.id + '" style="background: #B8A279; color: white; border: none; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;"><i class="fas fa-eye"></i> Ver</button></td>';
+                // Acciones - BOTÓN MÁS COMPACTO
+                html += '<td style="text-align: center;"><button class="btn btn-sm btn-view" data-id="' + propiedad.id + '" style="background: #B8A279; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;"><i class="fas fa-eye"></i></button></td>';
                 html += '</tr>';
             }.bind(this));
             

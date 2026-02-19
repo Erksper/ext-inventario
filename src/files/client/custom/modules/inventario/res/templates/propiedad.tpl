@@ -61,7 +61,7 @@
                     </div>
                     <div class="col-md-4">
                         <div class="info-item">
-                            <div class="info-label">Sub Tipo de Propiedad</div> <!-- CAMBIADO -->
+                            <div class="info-label">Sub Tipo de Propiedad</div>
                             <div class="info-value" id="prop-subTipoPropiedad">-</div>
                         </div>
                     </div>
@@ -89,19 +89,19 @@
                 <div class="row">
                     <div class="col-md-3">
                         <div class="info-item">
-                            <div class="info-label">Asesor Encargado</div> <!-- CAMBIADO -->
+                            <div class="info-label">Asesor Encargado</div>
                             <div class="info-value" id="prop-asesor">-</div>
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="info-item">
-                            <div class="info-label">Fecha de Publicación</div> <!-- CAMBIADO -->
+                            <div class="info-label">Fecha de Publicación</div>
                             <div class="info-value" id="prop-fechaAlta">-</div>
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="info-item">
-                            <div class="info-label">Días en el Mercado</div> <!-- NUEVO -->
+                            <div class="info-label">Días en el Mercado</div>
                             <div class="info-value" id="prop-diasMercado">-</div>
                         </div>
                     </div>
@@ -130,9 +130,8 @@
             <div class="panel-heading" data-action="toggle-panel">
                 <h4 class="panel-title">
                     <i class="fas fa-gavel"></i> Requisitos legales del inmueble
-                    <!-- Icono de porcentaje para notas -->
                     <span class="nota-percentaje" style="float: right; margin-left: 10px; font-weight: bold; color: #666;">
-                        <i class="fas fa-percentage"></i> <span id="nota-legal">0%</span>
+                        <span id="nota-legal">0%</span>
                     </span>
                     <span class="fas fa-chevron-down"></span>
                 </h4>
@@ -186,9 +185,8 @@
             <div class="panel-heading" data-action="toggle-panel">
                 <h4 class="panel-title">
                     <i class="fas fa-chart-line"></i> Mercadeo
-                    <!-- Icono de porcentaje para notas -->
                     <span class="nota-percentaje" style="float: right; margin-left: 10px; font-weight: bold; color: #666;">
-                        <i class="fas fa-percentage"></i> <span id="nota-mercadeo">0%</span>
+                        <span id="nota-mercadeo">0%</span>
                     </span>
                     <span class="fas fa-chevron-down"></span>
                 </h4>
@@ -206,12 +204,18 @@
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                </div>
+                
+                <!-- CORREGIDO: Row para SubBuyers -->
+                <div class="row">
+                    <div class="col-md-12">
                         <div class="form-group">
                             <label class="form-label">Sub Buyer Persona</label>
-                            <select id="subBuyerPersona" class="form-control">
-                                <option value="">Cargando...</option>
-                            </select>
+                            <div id="subbuyers-checkbox-container" class="subbuyers-checkbox-grid">
+                                <div class="text-center" style="padding: 20px; color: #999;">
+                                    <i class="fas fa-spinner fa-spin"></i> Cargando opciones...
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -253,7 +257,7 @@
                 <h4 class="panel-title">
                     <i class="fas fa-user-check"></i> Apoderado
                     <span class="nota-percentaje" style="float: right; margin-left: 10px; font-weight: bold; color: #666;">
-                        <i class="fas fa-percentage"></i> <span id="nota-apoderado">0%</span>
+                        <span id="nota-apoderado"></span>
                     </span>
                     <span class="fas fa-chevron-down"></span>
                 </h4>
@@ -265,10 +269,10 @@
                             <label class="form-label">¿Cuenta con apoderado?</label>
                             <div class="radio-group">
                                 <label class="radio-label">
-                                    <input type="radio" name="apoderado" value="true"> Lo tiene  <!-- CAMBIADO -->
+                                    <input type="radio" name="apoderado" value="true"> Lo tiene
                                 </label>
                                 <label class="radio-label">
-                                    <input type="radio" name="apoderado" value="false" checked> No lo tiene  <!-- CAMBIADO -->
+                                    <input type="radio" name="apoderado" value="false" checked> No lo tiene
                                 </label>
                             </div>
                         </div>
@@ -315,7 +319,6 @@
                 </h4>
             </div>
             <div class="panel-body" style="display: none;">
-                <!-- NUEVA ESTRUCTURA CON SELECTORES -->
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-group">
