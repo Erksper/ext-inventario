@@ -326,8 +326,19 @@ define('inventario:views/list', [
 
         calcularDias: function (fechaAlta) {
             if (!fechaAlta) return '-';
-            var dias = Math.floor((new Date() - new Date(fechaAlta)) / (1000 * 60 * 60 * 24));
-            return dias + ' días';
+            
+            // Crear fechas sin la parte de hora para comparar solo días
+            var hoy = new Date();
+            var fecha = new Date(fechaAlta);
+            
+            // Resetear horas a 00:00:00 para comparar solo fechas
+            hoy.setHours(0, 0, 0, 0);
+            fecha.setHours(0, 0, 0, 0);
+            
+            var diffTime = hoy.getTime() - fecha.getTime();
+            var diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            
+            return diffDays + ' días';
         },
 
         /**

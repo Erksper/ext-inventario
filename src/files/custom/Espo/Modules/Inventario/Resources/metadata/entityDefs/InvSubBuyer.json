@@ -41,6 +41,12 @@
         "modifiedBy": {
             "type": "belongsTo",
             "entity": "User"
+        },
+        "invPropiedades": {
+            "type": "hasMany",
+            "entity": "InvPropiedades",
+            "foreign": "subBuyers",
+            "relationName": "invPropiedadesInvSubBuyer"
         }
     },
     "collection": {

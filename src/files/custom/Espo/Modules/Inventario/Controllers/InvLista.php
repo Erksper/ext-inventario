@@ -25,7 +25,11 @@ class InvLista extends Record
         }
 
         $teamIds = []; $claUsuario = null; $oficinaUsuario = null;
-        $teams = $user->get('teams');
+        
+        // ═══════════════════════════════════════════════════════════
+        // CORRECCIÓN: Obtener teams usando getRelation()
+        // ═══════════════════════════════════════════════════════════
+        $teams = $em->getRelation($user, 'teams')->find();
         if ($teams) {
             foreach ($teams as $team) {
                 $id = $team->getId();
@@ -44,7 +48,11 @@ class InvLista extends Record
 
         $esCasaNacional = $user->get('type') === 'admin';
         $esGerente = $esDirector = $esCoordinador = false;
-        $roles = $user->get('roles');
+        
+        // ═══════════════════════════════════════════════════════════
+        // CORRECCIÓN: Obtener roles usando getRelation()
+        // ═══════════════════════════════════════════════════════════
+        $roles = $em->getRelation($user, 'roles')->find();
         if ($roles) {
             foreach ($roles as $role) {
                 $n = strtolower($role->get('name') ?? '');
@@ -120,7 +128,11 @@ class InvLista extends Record
             foreach ($propiedadIds as $pid) {
                 $propiedad = $em->getEntityById('Propiedades', $pid);
                 if (!$propiedad) continue;
-                $propTeams = $propiedad->get('teams');
+                
+                // ═══════════════════════════════════════════════════════════
+                // CORRECCIÓN: Obtener teams de propiedad usando getRelation()
+                // ═══════════════════════════════════════════════════════════
+                $propTeams = $em->getRelation($propiedad, 'teams')->find();
                 if (!$propTeams) continue;
                 foreach ($propTeams as $team) {
                     $tid = $team->getId();
@@ -172,8 +184,13 @@ class InvLista extends Record
             foreach ($propiedadIds as $pid) {
                 $propiedad = $em->getEntityById('Propiedades', $pid);
                 if (!$propiedad) continue;
+                
+                // ═══════════════════════════════════════════════════════════
+                // CORRECCIÓN: Obtener asesor usando getRelation()
+                // ═══════════════════════════════════════════════════════════
                 $asesorId = $propiedad->get('idAsesorExclusivaId');
                 if (!$asesorId || isset($asesoresMap[$asesorId])) continue;
+                
                 $asesor = $em->getEntityById('User', $asesorId);
                 if (!$asesor || $asesor->get('deleted') || !$asesor->get('isActive')) continue;
                 $asesoresMap[$asesorId] = $asesor->get('name');
@@ -194,10 +211,7 @@ class InvLista extends Record
     }
 
     // ═══════════════════════════════════════════════════════════
-    // PROPIEDADES — paginación via PDO (IDs) + getEntityById
-    // La versión del ORM instalada no tiene ->offset(), así que
-    // toda la paginación se hace con PDO puro sobre IDs,
-    // y los datos de cada entidad se cargan con getEntityById.
+    // PROPIEDADES (sin cambios, ya usa PDO para paginación)
     // ═══════════════════════════════════════════════════════════
 
     public function getActionGetPropiedades(Request $request): array
@@ -231,8 +245,6 @@ class InvLista extends Record
             $log->info("[InvLista::getPropiedades] Status target: '{$statusTarget}'");
 
             // ── 3. Construir WHERE SQL para IDs ────────────────────────────
-            // Usamos PDO solo para obtener IDs paginados — todas las columnas
-            // son de la tabla propiedades, sin join a ninguna otra tabla.
             $where  = "p.deleted = 0";
             $params = [];
 
@@ -257,7 +269,6 @@ class InvLista extends Record
                 $params['fechaHasta'] = $fechaHasta;
             }
 
-            // Filtro de teams (CLA y/o Oficina) vía subquery en entity_team
             if ($claId) {
                 $where .= " AND EXISTS (
                     SELECT 1 FROM entity_team et_cla
@@ -305,7 +316,7 @@ class InvLista extends Record
             $stmtIds->bindValue(':limit',  $porPagina, \PDO::PARAM_INT);
             $stmtIds->bindValue(':offset', $offset,    \PDO::PARAM_INT);
             $stmtIds->execute();
-            $idsPage = $stmtIds->fetchAll(\PDO::FETCH_COLUMN); // solo el id (primera columna)
+            $idsPage = $stmtIds->fetchAll(\PDO::FETCH_COLUMN);
 
             $log->info("[InvLista::getPropiedades] IDs en página: " . count($idsPage));
 
@@ -313,7 +324,7 @@ class InvLista extends Record
                 return $this->respuestaPaginada([], $total, $pagina, $porPagina);
             }
 
-            // ── 6. Cargar entidades + resolver asesor via getEntityById ────
+            // ── 6. Cargar entidades + resolver asesor ────────────────────
             $result      = [];
             $asesorCache = [];
 
@@ -414,10 +425,6 @@ class InvLista extends Record
     // PRIVADOS
     // ═══════════════════════════════════════════════════════════
 
-    /**
-     * Detecta el valor exacto del status "en promocion" como está guardado en la DB.
-     * Maneja variaciones: 'En promocion', 'En Promocion', 'en_promocion', etc.
-     */
     private function detectarStatusPromocion(\PDO $pdo, $log): ?string
     {
         $posibles = ['En promocion', 'En Promocion', 'EN PROMOCION', 'en_promocion', 'En Promoción', 'Activo', 'activo'];
@@ -433,7 +440,6 @@ class InvLista extends Record
             }
         }
 
-        // Búsqueda fuzzy: cualquier valor que contenga 'promo'
         foreach ($rows as $row) {
             if (stripos($row, 'promo') !== false) {
                 $log->info("[InvLista] Status detectado por fuzzy: '{$row}'");
@@ -441,14 +447,10 @@ class InvLista extends Record
             }
         }
 
-        // Si no se encuentra ningún status de "promocion", loguear y retornar null (sin filtro de status)
         $log->warning("[InvLista] No se detectó status de 'promocion'. Se cargarán todas las propiedades activas.");
         return null;
     }
 
-    /**
-     * Estructura de respuesta paginada estándar.
-     */
     private function respuestaPaginada(array $data, int $total, int $pagina, int $porPagina): array
     {
         return [

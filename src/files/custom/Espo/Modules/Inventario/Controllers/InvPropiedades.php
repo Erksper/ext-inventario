@@ -516,36 +516,67 @@ class InvPropiedades extends Base
     private function guardarSubBuyers($inventario, $subBuyersIds)
     {
         $entityManager = $this->getContainer()->get('entityManager');
+        $inventarioId = $inventario->get('id');
         
-        // ═══════════════════════════════════════════════════════════
-        // CORRECCIÓN 5: Usar getRelation() para manejar subBuyers
-        // ═══════════════════════════════════════════════════════════
+        // Si no hay IDs, no hacemos nada
+        if (!is_array($subBuyersIds)) {
+            return;
+        }
+        
         try {
-            $actuales    = $entityManager->getRelation($inventario, 'subBuyers')->find();
+            // Intentar usar el ORM primero
+            $actuales = $entityManager->getRelation($inventario, 'subBuyers')->find();
             $actualesIds = [];
-            foreach ($actuales as $sb) $actualesIds[] = $sb->get('id');
+            foreach ($actuales as $sb) {
+                $actualesIds[] = $sb->get('id');
+            }
 
+            // Eliminar los que ya no están
             foreach ($actualesIds as $actualId) {
                 if (!in_array($actualId, $subBuyersIds)) {
                     $entityManager->getRelation($inventario, 'subBuyers')->unrelateById($actualId);
                 }
             }
+            
+            // Agregar los nuevos
             foreach ($subBuyersIds as $newId) {
                 if (!in_array($newId, $actualesIds)) {
                     $entityManager->getRelation($inventario, 'subBuyers')->relateById($newId);
                 }
             }
+            
         } catch (\Exception $e) {
-            // Fallback a PDO si la relación no funciona
-            $pdo = $entityManager->getPDO();
-            $pdo->prepare("UPDATE inv_propiedades_inv_sub_buyer SET deleted = 1 WHERE inv_propiedades_id = :id")
-                ->execute(['id' => $inventario->get('id')]);
-            foreach ($subBuyersIds as $sbId) {
-                $pdo->prepare("
-                    INSERT INTO inv_propiedades_inv_sub_buyer (inv_propiedades_id, inv_sub_buyer_id, deleted)
-                    VALUES (:invId, :sbId, 0)
-                    ON DUPLICATE KEY UPDATE deleted = 0
-                ")->execute(['invId' => $inventario->get('id'), 'sbId' => $sbId]);
+            // Si el ORM falla, registrar el error pero no detener la operación
+            $GLOBALS['log']->error('Error al guardar subBuyers con ORM: ' . $e->getMessage());
+            
+            // Como no podemos usar el ORM, al menos intentamos con PDO
+            try {
+                $pdo = $entityManager->getPDO();
+                
+                // Primero marcar todos como eliminados
+                $pdo->prepare("UPDATE inv_propiedades_inv_sub_buyer SET deleted = 1 WHERE inv_propiedades_id = :id")
+                    ->execute(['id' => $inventarioId]);
+                
+                // Luego insertar/actualizar los nuevos
+                foreach ($subBuyersIds as $sbId) {
+                    // Verificar si ya existe
+                    $stmt = $pdo->prepare("SELECT id FROM inv_propiedades_inv_sub_buyer WHERE inv_propiedades_id = :invId AND inv_sub_buyer_id = :sbId");
+                    $stmt->execute(['invId' => $inventarioId, 'sbId' => $sbId]);
+                    $existe = $stmt->fetch();
+                    
+                    if ($existe) {
+                        // Actualizar
+                        $pdo->prepare("UPDATE inv_propiedades_inv_sub_buyer SET deleted = 0 WHERE inv_propiedades_id = :invId AND inv_sub_buyer_id = :sbId")
+                            ->execute(['invId' => $inventarioId, 'sbId' => $sbId]);
+                    } else {
+                        // Insertar nuevo
+                        $id = uniqid(); // Generar ID único
+                        $pdo->prepare("INSERT INTO inv_propiedades_inv_sub_buyer (id, inv_propiedades_id, inv_sub_buyer_id, deleted) VALUES (:id, :invId, :sbId, 0)")
+                            ->execute(['id' => $id, 'invId' => $inventarioId, 'sbId' => $sbId]);
+                    }
+                }
+            } catch (\Exception $ex) {
+                $GLOBALS['log']->error('Error al guardar subBuyers con PDO: ' . $ex->getMessage());
             }
         }
     }

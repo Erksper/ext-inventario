@@ -30,13 +30,11 @@ class InvRecaudos extends Record
         try {
             $recaudo = $entityManager->getEntity('InvRecaudos');
             
-            // Determinar el tipo - CORREGIDO
+            // Determinar el tipo
             $tipo = $data['tipo'];
             
             // Si es array (para legal), verificar qué tipo de persona está seleccionada
             if (is_array($tipo)) {
-                // Para legal, necesitamos saber si es Natural o Jurídico
-                // El frontend debería enviar 'Natural' o 'Jurídico' como string
                 $tipo = isset($data['tipoPersona']) ? $data['tipoPersona'] : 'Natural';
             }
             
@@ -132,7 +130,6 @@ class InvRecaudos extends Record
             
             // Manejar diferentes formatos de tipo
             if (is_array($tipoParam)) {
-                // Si es array, usar condición OR
                 $conditions['tipo'] = $tipoParam;
             } else {
                 $conditions['tipo'] = $tipoParam;
@@ -232,7 +229,10 @@ class InvRecaudos extends Record
             
             // Filtrar por tipo
             foreach ($propiedadesRecaudos as $propRecaudo) {
-                $recaudo = $propRecaudo->get('idRecaudos');
+                // ═══════════════════════════════════════════════════════════
+                // CORRECCIÓN: Obtener recaudo usando getRelation()
+                // ═══════════════════════════════════════════════════════════
+                $recaudo = $entityManager->getRelation($propRecaudo, 'idRecaudos')->findOne();
                 if ($recaudo) {
                     $tipoRecaudo = $recaudo->get('tipo');
                     
@@ -251,7 +251,7 @@ class InvRecaudos extends Record
                             'descripcion' => $recaudo->get('descripcion'),
                             'default' => $recaudo->get('default'),
                             'tipo' => $tipoRecaudo,
-                            'idRelacion' => $propRecaudo->get('id') // ID de la relación
+                            'idRelacion' => $propRecaudo->get('id')
                         ];
                     }
                 }
@@ -279,7 +279,7 @@ class InvRecaudos extends Record
                         'descripcion' => $recaudo->get('descripcion'),
                         'default' => true,
                         'tipo' => $recaudo->get('tipo'),
-                        'idRelacion' => null // No hay relación aún
+                        'idRelacion' => null
                     ];
                 }
             }
