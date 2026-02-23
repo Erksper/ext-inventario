@@ -1,495 +1,297 @@
 <div class="container-fluid inv-inventario-container">
-    <!-- Header principal -->
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <div class="page-header-card">
-                <div class="d-flex justify-content-between align-items-start flex-wrap">
-                    <div class="header-left" style="flex: 1;">
-                        <div class="header-icon">
-                            <i class="fas fa-building"></i>
-                        </div>
-                        <div class="header-content">
-                            <h1 class="page-title">Inventario de Propiedades</h1>
-                            <p class="page-subtitle">
-                                Gestión y visualización del inventario inmobiliario
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+
+    <!-- Header -->
+    <div class="inv-page-header">
+        <div class="inv-header-icon"><i class="fas fa-building"></i></div>
+        <div>
+            <h1 class="inv-page-title">Inventario de Propiedades</h1>
+            <p class="inv-page-sub">Gestión y visualización del inventario inmobiliario</p>
         </div>
     </div>
-    
+
     <!-- Filtros -->
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <div class="filtro-card">
-                <div class="filtro-header">
-                    <div class="filtro-title-wrapper">
-                        <i class="fas fa-filter filtro-title-icon"></i>
-                        <h3 class="filtro-title">Filtrar Propiedades</h3>
-                    </div>
+    <div class="inv-card mb-4">
+        <div class="inv-card-header">
+            <i class="fas fa-filter" style="color:#B8A279;"></i>
+            <strong style="margin-left:8px;">Filtrar Propiedades</strong>
+        </div>
+        <div class="inv-card-body">
+            <div class="inv-filtros-grid">
+
+                <div class="filter-group" id="filtro-cla-group">
+                    <label>CLA</label>
+                    <select id="filtro-cla" class="form-control inv-select">
+                        <option value="">Todos los CLAs</option>
+                    </select>
                 </div>
-                <div class="filtro-body">
-                    <div class="filtros-grid">
-                        <div class="filter-group" id="filtro-cla-group">
-                            <label for="filtro-cla">CLA</label>
-                            <select id="filtro-cla" class="form-control">
-                                <option value="">Todos los CLAs</option>
-                            </select>
-                        </div>
-                        <div class="filter-group" id="filtro-oficina-group">
-                            <label for="filtro-oficina">Oficina</label>
-                            <select id="filtro-oficina" class="form-control" disabled>
-                                <option value="">Seleccione un CLA primero</option>
-                            </select>
-                        </div>
-                        <div class="filter-group" id="filtro-asesor-group">
-                            <label for="filtro-asesor">Asesor</label>
-                            <select id="filtro-asesor" class="form-control" disabled>
-                                <option value="">Seleccione una oficina primero</option>
-                            </select>
-                        </div>
-                        <div class="filter-group">
-                            <label for="filtro-estado">Estado (Propiedad)</label>
-                            <select id="filtro-estado" class="form-control">
-                                <option value="">Todos</option>
-                                <option value="Disponible">Disponible</option>
-                                <option value="Reservada">Reservada</option>
-                                <option value="Vendida">Vendida</option>
-                                <option value="Rentada">Rentada</option>
-                                <option value="Retirada">Retirada</option>
-                            </select>
-                        </div>
-                        <div class="filter-group">
-                            <label for="filtro-municipio">Municipio</label>
-                            <input type="text" id="filtro-municipio" class="form-control" placeholder="Ej: Chacao">
-                        </div>
-                        <div class="filter-group">
-                            <label for="filtro-ciudad">Ciudad</label>
-                            <input type="text" id="filtro-ciudad" class="form-control" placeholder="Ej: Caracas">
-                        </div>
-                        <div class="filter-group">
-                            <label for="filtro-fecha-desde">Desde</label>
-                            <input type="date" id="filtro-fecha-desde" class="form-control">
-                        </div>
-                        <div class="filter-group">
-                            <label for="filtro-fecha-hasta">Hasta</label>
-                            <input type="date" id="filtro-fecha-hasta" class="form-control">
-                        </div>
-                    </div>
-                    <div class="filtro-actions">
-                        <button class="btn btn-action btn-aplicar" data-action="aplicar-filtros">
-                            <i class="fas fa-search"></i>
-                            <span>Buscar</span>
-                        </button>
-                        <button class="btn btn-action btn-limpiar" data-action="limpiar-filtros">
-                            <i class="fas fa-times"></i>
-                            <span>Limpiar</span>
-                        </button>
-                    </div>
+
+                <div class="filter-group" id="filtro-oficina-group">
+                    <label>Oficina</label>
+                    <select id="filtro-oficina" class="form-control inv-select" disabled>
+                        <option value="">Seleccione un CLA primero</option>
+                    </select>
                 </div>
+
+                <div class="filter-group" id="filtro-asesor-group">
+                    <label>Asesor</label>
+                    <select id="filtro-asesor" class="form-control inv-select" disabled>
+                        <option value="">Todos los asesores</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>Desde</label>
+                    <input type="date" id="filtro-fecha-desde" class="form-control inv-select">
+                </div>
+
+                <div class="filter-group">
+                    <label>Hasta</label>
+                    <input type="date" id="filtro-fecha-hasta" class="form-control inv-select">
+                </div>
+
+            </div>
+            <div class="inv-filtro-actions">
+                <button class="inv-btn inv-btn-primary" data-action="aplicar-filtros">
+                    <i class="fas fa-search"></i> Buscar
+                </button>
+                <button class="inv-btn inv-btn-secondary" data-action="limpiar-filtros">
+                    <i class="fas fa-times"></i> Limpiar
+                </button>
             </div>
         </div>
     </div>
-    
-    <!-- Contador de propiedades -->
-    <div class="row mb-3">
-        <div class="col-md-12">
-            <div class="contador-propiedades">
-                <i class="fas fa-home me-2"></i>
-                <strong id="total-propiedades-mostradas">0</strong> propiedades encontradas
-            </div>
+
+    <!-- Contador + leyenda -->
+    <div class="inv-meta-row">
+        <div class="inv-contador">
+            <i class="fas fa-home" style="color:#B8A279;margin-right:6px;"></i>
+            Mostrando <strong id="total-propiedades-mostradas">0</strong> propiedades
+        </div>
+        <div class="inv-leyenda">
+            <span style="font-weight:600;margin-right:8px;">Estado:</span>
+            <span class="inv-badge" style="background:#27ae60;">Verde</span>
+            <span class="inv-badge" style="background:#f39c12;">Amarillo</span>
+            <span class="inv-badge" style="background:#e74c3c;">Rojo</span>
         </div>
     </div>
-    
-    <!-- Leyenda de semáforo -->
-    <div class="row mb-3">
-        <div class="col-md-12">
-            <div class="leyenda-semaforo">
-                <span class="leyenda-titulo">
-                    <i class="fas fa-traffic-light me-2"></i>
-                    <strong>Estado de Propiedad:</strong>
-                </span>
-                <div class="leyenda-items">
-                    <span class="leyenda-badge" style="background: #27ae60;" title="Propiedad en óptimas condiciones">Verde (Óptima)</span>
-                    <span class="leyenda-badge" style="background: #f39c12;" title="Propiedad requiere atención">Amarillo (Atención)</span>
-                    <span class="leyenda-badge" style="background: #e74c3c;" title="Propiedad requiere acción urgente">Rojo (Urgente)</span>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Contenido dinámico - Lista de propiedades -->
+
+    <!-- Tabla dinámica -->
     <div id="inventario-container">
-        <div class="text-center" style="padding: 80px 20px;">
+        <div class="text-center" style="padding:80px 20px;">
             <div class="spinner-large"></div>
-            <h4 class="mt-4" style="color: #1A1A1A; font-weight: 600; margin-bottom: 10px;">
-                Cargando inventario...
-            </h4>
-            <p style="color: #666666;">
-                Obteniendo datos del servidor
-            </p>
+            <h4 style="color:#1A1A1A;font-weight:600;margin-top:20px;">Cargando inventario...</h4>
+            <p style="color:#666;">Obteniendo datos del servidor</p>
         </div>
     </div>
+
 </div>
 
 <style>
-/* Estilos base */
+/* ── Contenedor ─────────────────────────────────────────── */
 .inv-inventario-container {
-    padding: 30px;
-    background-color: #F5F5F5;
+    padding: 28px;
+    background: #F5F5F5;
     min-height: 100vh;
 }
 
-/* Header */
-.page-header-card,
-.filtro-card {
-    background: #FFFFFF;
-    border-radius: 12px;
-    padding: 30px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    border: 1px solid #E6E6E6;
-    margin-bottom: 30px;
-}
-
-.header-left {
+/* ── Header ─────────────────────────────────────────────── */
+.inv-page-header {
     display: flex;
     align-items: center;
-    gap: 20px;
-    flex: 1;
+    gap: 18px;
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px 28px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    border: 1px solid #E6E6E6;
 }
-
-.header-icon {
-    width: 60px;
-    height: 60px;
+.inv-header-icon {
+    width: 56px; height: 56px;
     background: #B8A279;
     border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 28px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 26px; flex-shrink: 0;
 }
+.inv-page-title { font-size: 28px; font-weight: 700; color: #1A1A1A; margin: 0 0 4px; }
+.inv-page-sub   { color: #666; font-size: 15px; margin: 0; }
 
-.page-title {
-    color: #1A1A1A;
-    font-weight: 700;
-    font-size: 32px;
-    margin: 0 0 8px 0;
+/* ── Card filtros ───────────────────────────────────────── */
+.inv-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    border: 1px solid #E6E6E6;
 }
-
-.page-subtitle {
-    color: #666666;
+.inv-card-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid #E6E6E6;
     font-size: 16px;
-    margin: 0;
-}
-
-/* Filtros */
-.filtro-header {
-    margin-bottom: 25px;
-}
-
-.filtro-title-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.filtro-title-icon {
-    color: #B8A279;
-    font-size: 20px;
-}
-
-.filtro-title {
     color: #1A1A1A;
-    font-weight: 600;
-    font-size: 20px;
-    margin: 0;
 }
+.inv-card-body { padding: 20px 24px; }
 
-.filtro-body {
-    padding-top: 20px;
-    border-top: 1px solid #E6E6E6;
-}
-
-.filtros-grid {
+.inv-filtros-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 20px;
-    margin-bottom: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 18px;
 }
-
-.filter-group {
-    display: block;
-}
-
 .filter-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 600;
-    color: #363438;
-    font-size: 14px;
+    display: block; margin-bottom: 6px;
+    font-weight: 600; font-size: 13px; color: #363438;
 }
-
-.filter-group .form-control {
-    width: 100%;
-    padding: 10px 15px;
-    border: 2px solid #E6E6E6;
-    border-radius: 8px;
-    font-size: 14px;
-    transition: all 0.3s ease;
+.inv-select {
+    width: 100%; padding: 9px 13px;
+    border: 2px solid #E6E6E6; border-radius: 8px;
+    font-size: 13px; transition: border-color .2s;
 }
+.inv-select:focus { border-color: #B8A279; outline: none; }
 
-.filter-group .form-control:focus {
-    border-color: #B8A279;
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(184, 162, 121, 0.1);
+.inv-filtro-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.inv-btn {
+    padding: 10px 20px; border-radius: 8px; border: none;
+    font-weight: 600; font-size: 13px; cursor: pointer;
+    transition: all .2s; display: inline-flex; align-items: center; gap: 7px;
 }
+.inv-btn-primary  { background: #B8A279; color: #fff; }
+.inv-btn-primary:hover  { background: #9D8B5F; }
+.inv-btn-secondary { background: #fff; color: #666; border: 2px solid #E6E6E6; }
+.inv-btn-secondary:hover { background: #B8A279; color: #fff; border-color: #B8A279; }
 
-.filtro-actions {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
+/* ── Meta row ───────────────────────────────────────────── */
+.inv-meta-row {
+    display: flex; align-items: center;
+    justify-content: space-between; flex-wrap: wrap; gap: 10px;
+    margin-bottom: 16px;
 }
-
-.btn-action {
-    border-radius: 8px;
-    padding: 12px 20px;
-    font-weight: 600;
-    font-size: 14px;
-    border: none;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-}
-
-.btn-aplicar {
-    background: #B8A279;
-    color: white;
-}
-
-.btn-aplicar:hover {
-    background: #9D8B5F;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(184, 162, 121, 0.2);
-}
-
-.btn-limpiar {
-    background: #FFFFFF;
-    color: #666666;
-    border: 2px solid #E6E6E6;
-}
-
-.btn-limpiar:hover {
-    background: #B8A279;
-    color: white;
-    border-color: #B8A279;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(184, 162, 121, 0.2);
-}
-
-/* Contador de propiedades */
-.contador-propiedades {
-    background: white;
-    padding: 15px 20px;
-    border-radius: 8px;
-    border: 1px solid #E6E6E6;
+.inv-contador {
+    background: #fff; padding: 12px 18px;
+    border-radius: 8px; border: 1px solid #E6E6E6;
     border-left: 4px solid #B8A279;
-    color: #363438;
-    font-size: 15px;
-    display: flex;
-    align-items: center;
+    font-size: 14px; color: #363438;
+}
+.inv-contador strong { color: #B8A279; font-size: 16px; }
+.inv-leyenda {
+    background: #fff; padding: 10px 16px;
+    border-radius: 8px; border: 1px solid #E6E6E6;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    font-size: 13px;
+}
+.inv-badge {
+    color: #fff; padding: 4px 10px;
+    border-radius: 4px; font-size: 11px; font-weight: 600;
 }
 
-.contador-propiedades strong {
-    color: #B8A279;
-    font-size: 18px;
-    margin: 0 5px;
-}
-
-/* Leyenda de semáforo */
-.leyenda-semaforo {
-    background: white;
-    padding: 15px 20px;
-    border-radius: 8px;
-    border: 1px solid #E6E6E6;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    flex-wrap: wrap;
-}
-
-.leyenda-titulo {
-    color: #363438;
-    font-size: 14px;
-}
-
-.leyenda-items {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.leyenda-badge {
-    color: white;
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: help;
-    transition: transform 0.2s ease;
-}
-
-.leyenda-badge:hover {
-    transform: scale(1.05);
-}
-
-/* Tabla de propiedades */
-.tabla-propiedades {
-    background: white;
+/* ── Tabla ──────────────────────────────────────────────── */
+.tabla-wrapper {
+    background: #fff;
     border-radius: 12px;
     overflow-x: auto;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    margin-bottom: 0;
 }
-
-.tabla-propiedades table {
-    width: 100%;
-    min-width: 1200px;
-    border-collapse: collapse;
+.tabla-propiedades {
+    width: 100%; border-collapse: collapse;
+    table-layout: fixed;
 }
-
 .tabla-propiedades thead {
     background: linear-gradient(135deg, #B8A279 0%, #D4C19C 100%);
-    color: white;
+    color: #fff;
 }
-
 .tabla-propiedades th {
-    padding: 18px 15px;
-    text-align: left;
-    font-weight: 600;
-    font-size: 14px;
+    padding: 14px 12px; font-size: 12px;
+    font-weight: 700; text-align: left; white-space: nowrap;
 }
-
 .tabla-propiedades tbody tr {
-    border-bottom: 1px solid #E6E6E6;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    border-bottom: 1px solid #F0F0F0;
+    cursor: pointer; transition: background .15s;
 }
-
-.tabla-propiedades tbody tr:hover {
-    background: rgba(184, 162, 121, 0.05);
-}
-
+.tabla-propiedades tbody tr:hover { background: rgba(184,162,121,0.06); }
 .tabla-propiedades td {
-    padding: 15px;
-    font-size: 14px;
-    color: #363438;
+    padding: 11px 12px; font-size: 13px; color: #363438;
+    vertical-align: middle;
+}
+.td-ellipsis {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.badge-estado {
+    color: #fff; padding: 3px 8px;
+    border-radius: 4px; font-size: 11px; font-weight: 600;
+    white-space: nowrap;
+}
+.btn-ver {
+    background: #B8A279; color: #fff;
+    border: none; border-radius: 6px;
+    padding: 5px 10px; cursor: pointer;
+    font-size: 12px; transition: background .2s;
+}
+.btn-ver:hover { background: #9D8B5F; }
+
+/* ── Paginación ─────────────────────────────────────────── */
+.paginacion-container {
+    display: flex; align-items: center;
+    justify-content: space-between; flex-wrap: wrap; gap: 12px;
+    padding: 14px 20px;
+    background: #fff;
+    border-top: 1px solid #E6E6E6;
+    border-radius: 0 0 12px 12px;
+}
+.paginacion-info { font-size: 13px; color: #666; }
+.paginacion-controles { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+
+.pag-btn {
+    min-width: 36px; height: 36px;
+    padding: 0 10px;
+    border: 1px solid #E6E6E6;
+    border-radius: 6px;
+    background: #fff; color: #363438;
+    font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all .15s;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.pag-btn:hover:not(.disabled):not(.pag-activo) {
+    background: #f5f0e8; border-color: #B8A279; color: #B8A279;
+}
+.pag-activo {
+    background: #B8A279 !important; color: #fff !important;
+    border-color: #B8A279 !important; font-weight: 700;
+}
+.pag-btn.disabled { opacity: .4; cursor: not-allowed; }
+.pag-nav { color: #B8A279; }
+.pag-ellipsis {
+    min-width: 36px; height: 36px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #999; font-size: 14px; pointer-events: none;
 }
 
-/* Semáforo */
-.semaforo-indicator {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    display: inline-block;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+/* ── No data ─────────────────────────────────────────────── */
+.no-data-card {
+    background: #fff; border-radius: 12px;
+    padding: 60px 40px; text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
 }
+.no-data-icon  { font-size: 64px; color: #B8A279; margin-bottom: 16px; }
+.no-data-title { font-size: 22px; font-weight: 700; color: #1A1A1A; margin-bottom: 8px; }
+.no-data-text  { color: #666; font-size: 15px; }
 
-.semaforo-verde {
-    background: #27ae60;
-}
-
-.semaforo-amarillo {
-    background: #f39c12;
-}
-
-.semaforo-rojo {
-    background: #e74c3c;
-}
-
-.btn-view {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-}
-
-/* Spinner */
+/* ── Spinner ─────────────────────────────────────────────── */
 .spinner-large {
-    width: 60px;
-    height: 60px;
+    width: 56px; height: 56px;
     border: 4px solid #E6E6E6;
-    border-top: 4px solid #B8A279;
+    border-top-color: #B8A279;
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin: 0 auto;
 }
+@keyframes spin { to { transform: rotate(360deg); } }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* No data card */
-.no-data-card {
-    background: white;
-    border-radius: 12px;
-    padding: 60px 40px;
-    text-align: center;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-}
-
-.no-data-icon {
-    font-size: 64px;
-    color: #B8A279;
-    margin-bottom: 20px;
-}
-
-.no-data-title {
-    color: #1A1A1A;
-    font-weight: 700;
-    font-size: 24px;
-    margin-bottom: 10px;
-}
-
-.no-data-text {
-    color: #666666;
-    font-size: 16px;
-}
-
-/* Responsive */
+/* ── Responsive ─────────────────────────────────────────── */
 @media (max-width: 768px) {
-    .inv-inventario-container {
-        padding: 15px;
-    }
-    
-    .filtros-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .header-left {
-        flex-direction: column;
-        text-align: center;
-    }
-    
-    .page-title {
-        font-size: 24px;
-    }
-    
-    .tabla-propiedades {
-        overflow-x: auto;
-    }
-    
-    .filtro-actions {
-        flex-direction: column;
-    }
-    
-    .btn-action {
-        width: 100%;
-    }
+    .inv-inventario-container { padding: 14px; }
+    .inv-filtros-grid { grid-template-columns: 1fr; }
+    .inv-meta-row { flex-direction: column; align-items: flex-start; }
+    .inv-page-title { font-size: 22px; }
+    .paginacion-container { flex-direction: column; align-items: flex-start; }
 }
 </style>

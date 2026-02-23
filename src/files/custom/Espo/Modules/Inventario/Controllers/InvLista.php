@@ -7,629 +7,459 @@ use Espo\Core\Api\Request;
 
 class InvLista extends Record
 {
-    /**
-     * Obtener información del usuario actual
-     */
+    // ═══════════════════════════════════════════════════════════
+    // USER INFO
+    // ═══════════════════════════════════════════════════════════
+
     public function getActionGetUserInfo(Request $request): array
     {
         $userId = $request->getQueryParam('userId');
-        
         if (!$userId) {
-            return [
-                'success' => false,
-                'error' => 'userId es requerido'
-            ];
+            return ['success' => false, 'error' => 'userId es requerido'];
         }
-        
-        // Obtener EntityManager a través del contenedor
-        $entityManager = $this->getContainer()->get('entityManager');
-        $user = $entityManager->getEntity('User', $userId);
-        
+
+        $em   = $this->getContainer()->get('entityManager');
+        $user = $em->getEntityById('User', $userId);
         if (!$user) {
-            return [
-                'success' => false,
-                'error' => 'Usuario no encontrado'
-            ];
+            return ['success' => false, 'error' => 'Usuario no encontrado'];
         }
-        
-        // Obtener tipo de usuario
-        $userType = $user->get('type');
-        
-        // Obtener teams del usuario
+
+        $teamIds = []; $claUsuario = null; $oficinaUsuario = null;
         $teams = $user->get('teams');
-        $teamIds = [];
         if ($teams) {
             foreach ($teams as $team) {
-                $teamIds[] = $team->id;
+                $id = $team->getId();
+                $teamIds[] = $id;
+                if (strpos($id, 'CLA') === 0) {
+                    $claUsuario     = $claUsuario     ?? $id;
+                } else {
+                    $oficinaUsuario = $oficinaUsuario ?? $id;
+                }
             }
         }
-        
-        // Determinar roles
-        $esCasaNacional = false;
-        $esGerente = false;
-        $esDirector = false;
-        $esCoordinador = false;
-        $claUsuario = null;
-        $oficinaUsuario = null;
-        
-        // Obtener el primer team como oficina (esto puede variar según tu lógica)
-        if (count($teamIds) > 0) {
-            $oficinaUsuario = $teamIds[0];
-            
-            // Aquí deberías implementar tu lógica para determinar
-            // si el team es CLA, si el usuario es gerente, etc.
-            // Por ahora, devolvemos valores por defecto
+        if (!$oficinaUsuario) {
+            $dtId = $user->get('defaultTeamId');
+            if ($dtId && strpos($dtId, 'CLA') !== 0) $oficinaUsuario = $dtId;
         }
-        
-        return [
-            'success' => true,
-            'data' => [
-                'usuarioId' => $userId,
-                'userType' => $userType,
-                'esCasaNacional' => $esCasaNacional,
-                'esGerente' => $esGerente,
-                'esDirector' => $esDirector,
-                'esCoordinador' => $esCoordinador,
-                'claUsuario' => $claUsuario,
-                'oficinaUsuario' => $oficinaUsuario
-            ]
-        ];
+
+        $esCasaNacional = $user->get('type') === 'admin';
+        $esGerente = $esDirector = $esCoordinador = false;
+        $roles = $user->get('roles');
+        if ($roles) {
+            foreach ($roles as $role) {
+                $n = strtolower($role->get('name') ?? '');
+                if (str_contains($n, 'casa nacional') || str_contains($n, 'casanacional')) $esCasaNacional = true;
+                if (str_contains($n, 'gerente'))     $esGerente     = true;
+                if (str_contains($n, 'director'))    $esDirector    = true;
+                if (str_contains($n, 'coordinador')) $esCoordinador = true;
+            }
+        }
+
+        return ['success' => true, 'data' => [
+            'usuarioId'      => $userId,
+            'userType'       => $user->get('type'),
+            'esCasaNacional' => $esCasaNacional,
+            'esGerente'      => $esGerente,
+            'esDirector'     => $esDirector,
+            'esCoordinador'  => $esCoordinador,
+            'claUsuario'     => $claUsuario,
+            'oficinaUsuario' => $oficinaUsuario,
+            'teamIds'        => $teamIds,
+        ]];
     }
-    
-    /**
-     * Obtener lista de CLAs
-     */
+
+    // ═══════════════════════════════════════════════════════════
+    // CLAs
+    // ═══════════════════════════════════════════════════════════
+
     public function getActionGetCLAs(Request $request): array
     {
-        // Obtener EntityManager a través del contenedor
-        $entityManager = $this->getContainer()->get('entityManager');
-        
-        // Aquí deberías implementar tu lógica para obtener CLAs
-        // Por ahora retornamos un ejemplo
-        $teams = $entityManager->getRepository('Team')
+        $em    = $this->getContainer()->get('entityManager');
+        $teams = $em->getRepository('Team')
             ->select(['id', 'name'])
+            ->where(['deleted' => false])
             ->find();
-        
+
         $clas = [];
         foreach ($teams as $team) {
-            $clas[] = [
-                'id' => $team->get('id'),
-                'name' => $team->get('name')
-            ];
+            if (strpos($team->getId(), 'CLA') === 0) {
+                $clas[] = ['id' => $team->getId(), 'name' => $team->get('name')];
+            }
         }
-        
-        return [
-            'success' => true,
-            'data' => $clas
-        ];
+        usort($clas, fn($a, $b) => strcmp($a['name'], $b['name']));
+
+        return ['success' => true, 'data' => $clas];
     }
-    
-    /**
-     * Obtener oficinas por CLA
-     */
+
+    // ═══════════════════════════════════════════════════════════
+    // OFICINAS POR CLA
+    // ═══════════════════════════════════════════════════════════
+
     public function getActionGetOficinasByCLA(Request $request): array
     {
         $claId = $request->getQueryParam('claId');
-        
-        if (!$claId) {
-            return [
-                'success' => false,
-                'error' => 'claId es requerido'
-            ];
+        if (!$claId) return ['success' => false, 'error' => 'claId es requerido'];
+
+        $em  = $this->getContainer()->get('entityManager');
+        $pdo = $em->getPDO();
+
+        try {
+            $stmt = $pdo->prepare("
+                SELECT DISTINCT entity_id FROM entity_team
+                WHERE team_id = :claId AND entity_type = 'Propiedades' AND deleted = 0
+                LIMIT 5000
+            ");
+            $stmt->execute(['claId' => $claId]);
+            $propiedadIds = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+
+            if (empty($propiedadIds)) {
+                return ['success' => true, 'data' => []];
+            }
+
+            $oficinasMap = [];
+            foreach ($propiedadIds as $pid) {
+                $propiedad = $em->getEntityById('Propiedades', $pid);
+                if (!$propiedad) continue;
+                $propTeams = $propiedad->get('teams');
+                if (!$propTeams) continue;
+                foreach ($propTeams as $team) {
+                    $tid = $team->getId();
+                    if (strpos($tid, 'CLA') === 0) continue;
+                    $oficinasMap[$tid] = $oficinasMap[$tid] ?? $team->get('name');
+                }
+            }
+
+            $oficinas = [];
+            foreach ($oficinasMap as $id => $name) {
+                $oficinas[] = ['id' => $id, 'name' => $name];
+            }
+            usort($oficinas, fn($a, $b) => strcmp($a['name'], $b['name']));
+
+            return ['success' => true, 'data' => $oficinas];
+
+        } catch (\Exception $e) {
+            $GLOBALS['log']->error('InvLista::getOficinasByCLA - ' . $e->getMessage());
+            return ['success' => false, 'error' => $e->getMessage()];
         }
-        
-        // Obtener EntityManager a través del contenedor
-        $entityManager = $this->getContainer()->get('entityManager');
-        
-        // Aquí implementar lógica para obtener oficinas del CLA
-        $teams = $entityManager->getRepository('Team')
-            ->select(['id', 'name'])
-            ->find();
-        
-        $oficinas = [];
-        foreach ($teams as $team) {
-            $oficinas[] = [
-                'id' => $team->get('id'),
-                'name' => $team->get('name')
-            ];
-        }
-        
-        return [
-            'success' => true,
-            'data' => $oficinas
-        ];
     }
-    
-    /**
-     * Obtener asesores por oficina
-     */
+
+    // ═══════════════════════════════════════════════════════════
+    // ASESORES POR OFICINA
+    // ═══════════════════════════════════════════════════════════
+
     public function getActionGetAsesoresByOficina(Request $request): array
     {
         $oficinaId = $request->getQueryParam('oficinaId');
-        
-        if (!$oficinaId) {
-            return [
-                'success' => false,
-                'error' => 'oficinaId es requerido'
-            ];
+        if (!$oficinaId) return ['success' => false, 'error' => 'oficinaId es requerido'];
+
+        $em  = $this->getContainer()->get('entityManager');
+        $pdo = $em->getPDO();
+
+        try {
+            $stmt = $pdo->prepare("
+                SELECT DISTINCT entity_id FROM entity_team
+                WHERE team_id = :oficinaId AND entity_type = 'Propiedades' AND deleted = 0
+                LIMIT 5000
+            ");
+            $stmt->execute(['oficinaId' => $oficinaId]);
+            $propiedadIds = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+
+            if (empty($propiedadIds)) {
+                return ['success' => true, 'data' => []];
+            }
+
+            $asesoresMap = [];
+            foreach ($propiedadIds as $pid) {
+                $propiedad = $em->getEntityById('Propiedades', $pid);
+                if (!$propiedad) continue;
+                $asesorId = $propiedad->get('idAsesorExclusivaId');
+                if (!$asesorId || isset($asesoresMap[$asesorId])) continue;
+                $asesor = $em->getEntityById('User', $asesorId);
+                if (!$asesor || $asesor->get('deleted') || !$asesor->get('isActive')) continue;
+                $asesoresMap[$asesorId] = $asesor->get('name');
+            }
+
+            $asesores = [];
+            foreach ($asesoresMap as $id => $name) {
+                $asesores[] = ['id' => $id, 'name' => $name];
+            }
+            usort($asesores, fn($a, $b) => strcmp($a['name'], $b['name']));
+
+            return ['success' => true, 'data' => $asesores];
+
+        } catch (\Exception $e) {
+            $GLOBALS['log']->error('InvLista::getAsesoresByOficina - ' . $e->getMessage());
+            return ['success' => false, 'error' => $e->getMessage()];
         }
-        
-        // Obtener EntityManager a través del contenedor
-        $entityManager = $this->getContainer()->get('entityManager');
-        
-        // Obtener usuarios del team
-        $team = $entityManager->getEntity('Team', $oficinaId);
-        
-        if (!$team) {
-            return [
-                'success' => false,
-                'error' => 'Oficina no encontrada'
-            ];
-        }
-        
-        // Obtener usuarios del team
-        $users = $entityManager->getRepository('User')
-            ->select(['id', 'name'])
-            ->where([
-                'isActive' => true,
-                'type' => 'regular'
-            ])
-            ->find();
-        
-        $asesores = [];
-        foreach ($users as $user) {
-            $asesores[] = [
-                'id' => $user->get('id'),
-                'name' => $user->get('name')
-            ];
-        }
-        
-        return [
-            'success' => true,
-            'data' => $asesores
-        ];
     }
-    
-    /**
-     * Obtener información de oficina
-     */
-    public function getActionGetInfoOficina(Request $request): array
-    {
-        $oficinaId = $request->getQueryParam('oficinaId');
-        
-        if (!$oficinaId) {
-            return [
-                'success' => false,
-                'error' => 'oficinaId es requerido'
-            ];
-        }
-        
-        // Obtener EntityManager a través del contenedor
-        $entityManager = $this->getContainer()->get('entityManager');
-        $team = $entityManager->getEntity('Team', $oficinaId);
-        
-        if (!$team) {
-            return [
-                'success' => false,
-                'error' => 'Oficina no encontrada'
-            ];
-        }
-        
-        return [
-            'success' => true,
-            'data' => [
-                'nombreOficina' => $team->get('name')
-            ]
-        ];
-    }
-    
-    /**
-     * Obtener propiedades con filtros
-     */
+
+    // ═══════════════════════════════════════════════════════════
+    // PROPIEDADES — paginación via PDO (IDs) + getEntityById
+    // La versión del ORM instalada no tiene ->offset(), así que
+    // toda la paginación se hace con PDO puro sobre IDs,
+    // y los datos de cada entidad se cargan con getEntityById.
+    // ═══════════════════════════════════════════════════════════
+
     public function getActionGetPropiedades(Request $request): array
     {
-        // Obtener EntityManager a través del contenedor
-        $entityManager = $this->getContainer()->get('entityManager');
-        
-        // Obtener parámetros de filtro
-        $claId = $request->getQueryParam('claId');
-        $oficinaId = $request->getQueryParam('oficinaId');
-        $asesorId = $request->getQueryParam('asesorId');
-        $estado = $request->getQueryParam('estado');
-        $municipio = $request->getQueryParam('municipio');
-        $ciudad = $request->getQueryParam('ciudad');
+        $log = $GLOBALS['log'];
+
+        $claId      = $request->getQueryParam('claId');
+        $oficinaId  = $request->getQueryParam('oficinaId');
+        $asesorId   = $request->getQueryParam('asesorId');
         $fechaDesde = $request->getQueryParam('fechaDesde');
         $fechaHasta = $request->getQueryParam('fechaHasta');
-        
-        // Construir query
-        $query = $entityManager->getRepository('Propiedades')
-            ->select([
-                'id',
-                'name',
-                'fechaAlta',
-                'calle',
-                'numero',
-                'urbanizacion',
-                'municipio',
-                'ciudad',
-                'tipoPropiedad',
-                'tipoOperacion',
-                'status'
-            ]);
-        
-        $whereClause = [];
-        
-        if ($estado) {
-            $whereClause['status'] = $estado;
-        }
-        
-        if ($municipio) {
-            $whereClause['municipio*'] = '%' . $municipio . '%';
-        }
-        
-        if ($ciudad) {
-            $whereClause['ciudad*'] = '%' . $ciudad . '%';
-        }
-        
-        if ($fechaDesde) {
-            $whereClause['fechaAlta>='] = $fechaDesde;
-        }
-        
-        if ($fechaHasta) {
-            $whereClause['fechaAlta<='] = $fechaHasta;
-        }
-        
-        if ($asesorId) {
-            $whereClause['assignedUserId'] = $asesorId;
-        }
-        
-        $query->where($whereClause);
-        $query->order('fechaAlta', 'DESC');
-        
-        $propiedades = $query->find();
-        
-        $result = [];
-        foreach ($propiedades as $propiedad) {
-            // Obtener nombre del asesor si existe
-            $asesorNombre = null;
-            $assignedUser = $propiedad->get('assignedUser');
-            if ($assignedUser) {
-                $asesorNombre = $assignedUser->get('name');
+        $pagina     = max(1, (int)($request->getQueryParam('pagina') ?? 1));
+        $porPagina  = 25;
+        $offset     = ($pagina - 1) * $porPagina;
+
+        $log->info("[InvLista::getPropiedades] START pagina={$pagina} claId={$claId} oficinaId={$oficinaId} asesorId={$asesorId}");
+
+        $em  = $this->getContainer()->get('entityManager');
+        $pdo = $em->getPDO();
+
+        try {
+            // ── 1. Diagnosticar valores de status en la DB ─────────────────
+            $statusRows = $pdo->query(
+                "SELECT DISTINCT status, COUNT(*) as c FROM propiedades WHERE deleted=0 GROUP BY status ORDER BY c DESC LIMIT 20"
+            )->fetchAll(\PDO::FETCH_ASSOC);
+            $statusLog = implode(' | ', array_map(fn($r) => "'{$r['status']}':{$r['c']}", $statusRows));
+            $log->info("[InvLista::getPropiedades] Status en DB: {$statusLog}");
+
+            // ── 2. Detectar valor exacto de "en promocion" ─────────────────
+            $statusTarget = $this->detectarStatusPromocion($pdo, $log);
+            $log->info("[InvLista::getPropiedades] Status target: '{$statusTarget}'");
+
+            // ── 3. Construir WHERE SQL para IDs ────────────────────────────
+            // Usamos PDO solo para obtener IDs paginados — todas las columnas
+            // son de la tabla propiedades, sin join a ninguna otra tabla.
+            $where  = "p.deleted = 0";
+            $params = [];
+
+            if ($statusTarget !== null) {
+                $where .= " AND p.status = :status";
+                $params['status'] = $statusTarget;
             }
-            
-            $result[] = [
-                'id' => $propiedad->get('id'),
-                'name' => $propiedad->get('name'),
-                'fechaAlta' => $propiedad->get('fechaAlta'),
-                'calle' => $propiedad->get('calle'),
-                'numero' => $propiedad->get('numero'),
-                'urbanizacion' => $propiedad->get('urbanizacion'),
-                'municipio' => $propiedad->get('municipio'),
-                'ciudad' => $propiedad->get('ciudad'),
-                'tipoPropiedad' => $propiedad->get('tipoPropiedad'),
-                'tipoOperacion' => $propiedad->get('tipoOperacion'),
-                'status' => $propiedad->get('status'),
-                'asesorNombre' => $asesorNombre
-            ];
+
+            if ($asesorId) {
+                $where .= " AND p.id_asesor_exclusiva_id = :asesorId";
+                $params['asesorId'] = $asesorId;
+                $log->info("[InvLista::getPropiedades] Filtro asesor: {$asesorId}");
+            }
+
+            if ($fechaDesde) {
+                $where .= " AND p.fecha_alta >= :fechaDesde";
+                $params['fechaDesde'] = $fechaDesde;
+            }
+
+            if ($fechaHasta) {
+                $where .= " AND p.fecha_alta <= :fechaHasta";
+                $params['fechaHasta'] = $fechaHasta;
+            }
+
+            // Filtro de teams (CLA y/o Oficina) vía subquery en entity_team
+            if ($claId) {
+                $where .= " AND EXISTS (
+                    SELECT 1 FROM entity_team et_cla
+                    WHERE et_cla.entity_id = p.id
+                      AND et_cla.team_id = :claId
+                      AND et_cla.entity_type = 'Propiedades'
+                      AND et_cla.deleted = 0
+                )";
+                $params['claId'] = $claId;
+            }
+
+            if ($oficinaId) {
+                $where .= " AND EXISTS (
+                    SELECT 1 FROM entity_team et_of
+                    WHERE et_of.entity_id = p.id
+                      AND et_of.team_id = :oficinaId
+                      AND et_of.entity_type = 'Propiedades'
+                      AND et_of.deleted = 0
+                )";
+                $params['oficinaId'] = $oficinaId;
+            }
+
+            // ── 4. Contar total ────────────────────────────────────────────
+            $stmtCount = $pdo->prepare("SELECT COUNT(DISTINCT p.id) as total FROM propiedades p WHERE {$where}");
+            $stmtCount->execute($params);
+            $total = (int)($stmtCount->fetch(\PDO::FETCH_ASSOC)['total'] ?? 0);
+            $log->info("[InvLista::getPropiedades] Total con filtros: {$total}");
+
+            if ($total === 0) {
+                $log->info("[InvLista::getPropiedades] Sin resultados");
+                return $this->respuestaPaginada([], 0, $pagina, $porPagina);
+            }
+
+            // ── 5. Obtener IDs de la página con LIMIT/OFFSET ───────────────
+            $stmtIds = $pdo->prepare(
+                "SELECT DISTINCT p.id, p.fecha_alta
+                 FROM propiedades p
+                 WHERE {$where}
+                 ORDER BY p.fecha_alta DESC
+                 LIMIT :limit OFFSET :offset"
+            );
+            foreach ($params as $k => $v) {
+                $stmtIds->bindValue(':' . $k, $v);
+            }
+            $stmtIds->bindValue(':limit',  $porPagina, \PDO::PARAM_INT);
+            $stmtIds->bindValue(':offset', $offset,    \PDO::PARAM_INT);
+            $stmtIds->execute();
+            $idsPage = $stmtIds->fetchAll(\PDO::FETCH_COLUMN); // solo el id (primera columna)
+
+            $log->info("[InvLista::getPropiedades] IDs en página: " . count($idsPage));
+
+            if (empty($idsPage)) {
+                return $this->respuestaPaginada([], $total, $pagina, $porPagina);
+            }
+
+            // ── 6. Cargar entidades + resolver asesor via getEntityById ────
+            $result      = [];
+            $asesorCache = [];
+
+            foreach ($idsPage as $pid) {
+                $propiedad = $em->getEntityById('Propiedades', $pid);
+                if (!$propiedad) {
+                    $log->warning("[InvLista::getPropiedades] getEntityById('Propiedades', '{$pid}') retornó null");
+                    continue;
+                }
+
+                $aid    = $propiedad->get('idAsesorExclusivaId');
+                $nombre = null;
+                if ($aid) {
+                    if (!array_key_exists($aid, $asesorCache)) {
+                        $u = $em->getEntityById('User', $aid);
+                        $asesorCache[$aid] = $u ? $u->get('name') : null;
+                    }
+                    $nombre = $asesorCache[$aid];
+                }
+
+                $result[] = [
+                    'id'            => $propiedad->getId(),
+                    'name'          => $propiedad->get('name'),
+                    'fechaAlta'     => $propiedad->get('fechaAlta'),
+                    'calle'         => $propiedad->get('calle')         ?? '',
+                    'numero'        => $propiedad->get('numero')        ?? '',
+                    'urbanizacion'  => $propiedad->get('urbanizacion')  ?? '',
+                    'municipio'     => $propiedad->get('municipio')     ?? '',
+                    'ciudad'        => $propiedad->get('ciudad')        ?? '',
+                    'tipoPropiedad' => $propiedad->get('tipoPropiedad') ?? '',
+                    'tipoOperacion' => $propiedad->get('tipoOperacion') ?? '',
+                    'status'        => $propiedad->get('status')        ?? '',
+                    'asesorId'      => $aid,
+                    'asesorNombre'  => $nombre,
+                ];
+            }
+
+            $log->info("[InvLista::getPropiedades] END OK — retornando " . count($result) . " registros");
+            return $this->respuestaPaginada($result, $total, $pagina, $porPagina);
+
+        } catch (\Exception $e) {
+            $log->error("[InvLista::getPropiedades] EXCEPTION: " . $e->getMessage());
+            return ['success' => false, 'error' => $e->getMessage()];
         }
-        
-        return [
-            'success' => true,
-            'data' => $result
-        ];
     }
 
-    // Agrega este método en InvLista.php, dentro de la clase InvLista
+    // ═══════════════════════════════════════════════════════════
+    // INVENTARIO DATA (batch)
+    // ═══════════════════════════════════════════════════════════
 
-    /**
-     * Obtener datos de inventario para propiedades
-     */
     public function postActionGetInventarioData(Request $request): array
     {
         $data = $request->getParsedBody();
-
-        if (is_object($data)) {
-            $data = (array) $data;
-        }
-        
+        if (is_object($data)) $data = (array)$data;
         $propiedadIds = $data['propiedadIds'] ?? [];
-        
-        if (!is_array($propiedadIds)) {
-            if (is_object($propiedadIds)) {
-                $propiedadIds = (array) $propiedadIds;
-            } else {
-                $propiedadIds = [];
-            }
-        }
-        
-        if (empty($propiedadIds)) {
-            return [
-                'success' => true,
-                'data' => []
-            ];
-        }
-        
+        if (is_object($propiedadIds)) $propiedadIds = (array)$propiedadIds;
+        if (empty($propiedadIds)) return ['success' => true, 'data' => []];
+
+        $em = $this->getContainer()->get('entityManager');
+
         try {
-            $entityManager = $this->getContainer()->get('entityManager');
-            
             $resultado = [];
-            
-            foreach ($propiedadIds as $propiedadId) {
-                // Buscar InvPropiedades por propiedadId (campo idPropiedadId)
-                $inventario = $entityManager->getRepository('InvPropiedades')
-                    ->where([
-                        'idPropiedadId' => $propiedadId,
-                        'deleted' => false
-                    ])
+            foreach ($propiedadIds as $pid) {
+                $inv = $em->getRepository('InvPropiedades')
+                    ->where(['idPropiedadId' => $pid, 'deleted' => false])
                     ->findOne();
-                
-                if ($inventario) {
-                    $resultado[$propiedadId] = [
-                        'id' => $inventario->get('id'),
-                        'estatusPropiedad' => $inventario->get('estatusPropiedad') ?? 'Sin calcular',
-                        'demanda' => $inventario->get('demanda') ?? 'Sin definir',
-                        'apoderado' => $inventario->get('apoderado') ?? false
+                if ($inv) {
+                    $resultado[$pid] = [
+                        'id'               => $inv->getId(),
+                        'estatusPropiedad' => $inv->get('estatusPropiedad') ?? 'Sin calcular',
+                        'demanda'          => $inv->get('demanda')          ?? 'Sin definir',
+                        'apoderado'        => (bool)$inv->get('apoderado'),
                     ];
                 }
             }
-            
-            return [
-                'success' => true,
-                'data' => $resultado
-            ];
-            
+            return ['success' => true, 'data' => $resultado];
+
         } catch (\Exception $e) {
-            $GLOBALS['log']->error('Error en getInventarioData: ' . $e->getMessage());
-            
-            return [
-                'success' => false,
-                'error' => 'Error: ' . $e->getMessage()
-            ];
+            $GLOBALS['log']->error('InvLista::getInventarioData - ' . $e->getMessage());
+            return ['success' => false, 'error' => $e->getMessage()];
         }
     }
 
-    public function getActionGetPropiedadInfo(Request $request): array
+    // ═══════════════════════════════════════════════════════════
+    // INFO OFICINA
+    // ═══════════════════════════════════════════════════════════
+
+    public function getActionGetInfoOficina(Request $request): array
     {
-        $propiedadId = $request->getQueryParam('propiedadId');
-        
-        if (!$propiedadId) {
-            return [
-                'success' => false,
-                'error' => 'propiedadId es requerido'
-            ];
+        $oficinaId = $request->getQueryParam('oficinaId');
+        if (!$oficinaId) return ['success' => false, 'error' => 'oficinaId es requerido'];
+        $team = $this->getContainer()->get('entityManager')->getEntityById('Team', $oficinaId);
+        if (!$team) return ['success' => false, 'error' => 'Oficina no encontrada'];
+        return ['success' => true, 'data' => ['nombreOficina' => $team->get('name')]];
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // PRIVADOS
+    // ═══════════════════════════════════════════════════════════
+
+    /**
+     * Detecta el valor exacto del status "en promocion" como está guardado en la DB.
+     * Maneja variaciones: 'En promocion', 'En Promocion', 'en_promocion', etc.
+     */
+    private function detectarStatusPromocion(\PDO $pdo, $log): ?string
+    {
+        $posibles = ['En promocion', 'En Promocion', 'EN PROMOCION', 'en_promocion', 'En Promoción', 'Activo', 'activo'];
+
+        $rows = $pdo->query("SELECT DISTINCT status FROM propiedades WHERE deleted=0 LIMIT 50")
+                    ->fetchAll(\PDO::FETCH_COLUMN);
+
+        $log->info("[InvLista] Status disponibles: " . implode(', ', array_map(fn($s) => "'{$s}'", $rows)));
+
+        foreach ($posibles as $posible) {
+            if (in_array($posible, $rows, true)) {
+                return $posible;
+            }
         }
-        
-        $entityManager = $this->getContainer()->get('entityManager');
-        $propiedad = $entityManager->getEntity('Propiedades', $propiedadId);
-        
-        if (!$propiedad) {
-            return [
-                'success' => false,
-                'error' => 'Propiedad no encontrada'
-            ];
+
+        // Búsqueda fuzzy: cualquier valor que contenga 'promo'
+        foreach ($rows as $row) {
+            if (stripos($row, 'promo') !== false) {
+                $log->info("[InvLista] Status detectado por fuzzy: '{$row}'");
+                return $row;
+            }
         }
-        
-        // Obtener datos del asesor
-        $asesorNombre = null;
-        $assignedUser = $propiedad->get('assignedUser');
-        if ($assignedUser) {
-            $asesorNombre = $assignedUser->get('name');
-        }
-        
+
+        // Si no se encuentra ningún status de "promocion", loguear y retornar null (sin filtro de status)
+        $log->warning("[InvLista] No se detectó status de 'promocion'. Se cargarán todas las propiedades activas.");
+        return null;
+    }
+
+    /**
+     * Estructura de respuesta paginada estándar.
+     */
+    private function respuestaPaginada(array $data, int $total, int $pagina, int $porPagina): array
+    {
         return [
-            'success' => true,
-            'data' => [
-                'id' => $propiedad->get('id'),
-                'name' => $propiedad->get('name'),
-                'tipoOperacion' => $propiedad->get('tipoOperacion'),
-                'tipoPropiedad' => $propiedad->get('tipoPropiedad'),
-                'subTipoPropiedad' => $propiedad->get('subTipoPropiedad'),
-                'm2C' => $propiedad->get('m2C'),
-                'm2T' => $propiedad->get('m2T'),
-                'calle' => $propiedad->get('calle'),
-                'numero' => $propiedad->get('numero'),
-                'urbanizacion' => $propiedad->get('urbanizacion'),
-                'ciudad' => $propiedad->get('ciudad'),
-                'estado' => $propiedad->get('estado'),
-                'asesorNombre' => $asesorNombre,
-                'fechaAlta' => $propiedad->get('fechaAlta'),
-                'status' => $propiedad->get('status')
-            ]
+            'success'    => true,
+            'data'       => $data,
+            'paginacion' => [
+                'pagina'       => $pagina,
+                'porPagina'    => $porPagina,
+                'total'        => $total,
+                'totalPaginas' => $porPagina > 0 ? (int)ceil($total / $porPagina) : 0,
+            ],
         ];
     }
-
-    /**
-     * Obtener datos de inventario por ID
-     */
-    public function getActionGetInventarioDataById(Request $request): array
-    {
-        $inventarioId = $request->getQueryParam('inventarioId');
-        
-        if (!$inventarioId) {
-            return [
-                'success' => false,
-                'error' => 'inventarioId es requerido'
-            ];
-        }
-        
-        $entityManager = $this->getContainer()->get('entityManager');
-        $inventario = $entityManager->getEntity('InvPropiedades', $inventarioId);
-        
-        if (!$inventario) {
-            return [
-                'success' => false,
-                'error' => 'Inventario no encontrado'
-            ];
-        }
-        
-        return [
-            'success' => true,
-            'data' => [
-                'tipoPersona' => $inventario->get('tipoPersona'),
-                'demanda' => $inventario->get('demanda'),
-                'tipoAcabado' => $inventario->get('tipoAcabado'),
-                'apoderado' => $inventario->get('apoderado'),
-                'buyer' => $inventario->get('buyer'),
-                'subBuyer' => $inventario->get('subBuyer'),
-                'fotos' => $inventario->get('fotos'),
-                'copy' => $inventario->get('copy'),
-                'video' => $inventario->get('video'),
-                'videoInsertado' => $inventario->get('videoInsertado'),
-                'metricas' => $inventario->get('metricas'),
-                'rotulo' => $inventario->get('rotulo'),
-                'precio' => $inventario->get('precio'),
-                'ubicacion' => $inventario->get('ubicacion'),
-                'exclusividad' => $inventario->get('exclusividad'),
-                'notaLegal' => $inventario->get('notaLegal'),
-                'notaMercadeo' => $inventario->get('notaMercadeo'),
-                'notaPrecio' => $inventario->get('notaPrecio'),
-                'notaExclusiva' => $inventario->get('notaExclusiva'),
-                'notaUbicacion' => $inventario->get('notaUbicacion')
-            ]
-        ];
-    }
-
-    /**
-     * Crear inventario
-     */
-    public function postActionCreateInventario(Request $request): array
-    {
-        $data = $request->getParsedBody();
-        
-        if (is_object($data)) {
-            $data = (array) $data;
-        }
-        
-        if (empty($data['propiedadId'])) {
-            return [
-                'success' => false,
-                'error' => 'propiedadId es requerido'
-            ];
-        }
-        
-        $entityManager = $this->getContainer()->get('entityManager');
-        
-        try {
-            $inventario = $entityManager->getEntity('InvPropiedades');
-            
-            // Establecer datos básicos
-            $inventario->set([
-                'idPropiedadId' => $data['propiedadId'],
-                'name' => 'Inventario - ' . date('Y-m-d H:i:s'),
-                'buyer' => $data['buyer'] ?? null,
-                'subBuyer' => $data['subBuyer'] ?? null,
-                'fotos' => $data['fotos'] ?? 'Modificar',
-                'copy' => $data['copy'] ?? 'Modificar',
-                'video' => $data['video'] ?? 'Modificar',
-                'videoInsertado' => $data['videoInsertado'] ?? 'Modificar',
-                'metricas' => $data['metricas'] ?? 'Modificar',
-                'rotulo' => $data['rotulo'] ?? 'Modificar',
-                'precio' => $data['precio'] ?? null,
-                'notaLegal' => 'Modificar',
-                'notaMercadeo' => $data['notaMercadeo'] ?? 'Modificar',
-                'notaPrecio' => $data['notaPrecio'] ?? 'Modificar',
-                'notaExclusiva' => $data['notaExclusiva'] ?? 'Modificar',
-                'notaUbicacion' => $data['notaUbicacion'] ?? 'Modificar',
-                'ubicacion' => $data['ubicacion'] ?? 'Modificar',
-                'exclusividad' => $data['exclusividad'] ?? null,
-                'apoderado' => isset($data['apoderado']) && $data['apoderado'] === 'si',
-                'demanda' => $data['demanda'] ?? null
-            ]);
-            
-            $entityManager->saveEntity($inventario);
-            
-            return [
-                'success' => true,
-                'data' => [
-                    'id' => $inventario->get('id'),
-                    'message' => 'Inventario creado exitosamente'
-                ]
-            ];
-            
-        } catch (\Exception $e) {
-            return [
-                'success' => false,
-                'error' => 'Error al crear inventario: ' . $e->getMessage()
-            ];
-        }
-    }
-
-    /**
-     * Actualizar inventario
-     */
-    public function postActionUpdateInventario(Request $request): array
-    {
-        $data = $request->getParsedBody();
-        
-        if (is_object($data)) {
-            $data = (array) $data;
-        }
-        
-        if (empty($data['inventarioId'])) {
-            return [
-                'success' => false,
-                'error' => 'inventarioId es requerido'
-            ];
-        }
-        
-        $entityManager = $this->getContainer()->get('entityManager');
-        $inventario = $entityManager->getEntity('InvPropiedades', $data['inventarioId']);
-        
-        if (!$inventario) {
-            return [
-                'success' => false,
-                'error' => 'Inventario no encontrado'
-            ];
-        }
-        
-        try {
-            // Actualizar datos
-            $updates = [
-                'buyer' => $data['buyer'] ?? null,
-                'subBuyer' => $data['subBuyer'] ?? null,
-                'fotos' => $data['fotos'] ?? $inventario->get('fotos'),
-                'copy' => $data['copy'] ?? $inventario->get('copy'),
-                'video' => $data['video'] ?? $inventario->get('video'),
-                'videoInsertado' => $data['videoInsertado'] ?? $inventario->get('videoInsertado'),
-                'metricas' => $data['metricas'] ?? $inventario->get('metricas'),
-                'rotulo' => $data['rotulo'] ?? $inventario->get('rotulo'),
-                'precio' => $data['precio'] ?? null,
-                'ubicacion' => $data['ubicacion'] ?? $inventario->get('ubicacion'),
-                'exclusividad' => $data['exclusividad'] ?? null,
-                'apoderado' => isset($data['apoderado']) && $data['apoderado'] === 'si',
-                'demanda' => $data['demanda'] ?? null
-            ];
-            
-            $inventario->set($updates);
-            $entityManager->saveEntity($inventario);
-            
-            return [
-                'success' => true,
-                'data' => [
-                    'message' => 'Inventario actualizado exitosamente'
-                ]
-            ];
-            
-        } catch (\Exception $e) {
-            return [
-                'success' => false,
-                'error' => 'Error al actualizar inventario: ' . $e->getMessage()
-            ];
-        }
-    }
-
-    /**
-     * Acción para mostrar la página de inventario de propiedad
-     */
-    public function actionInventarioPropiedad(Request $request): array
-    {
-        // Esta acción solo debe devolver que existe, la vista se maneja en el frontend
-        return [
-            'success' => true,
-            'data' => [
-                'message' => 'Redirigiendo a inventario'
-            ]
-        ];
-    }
-
 }

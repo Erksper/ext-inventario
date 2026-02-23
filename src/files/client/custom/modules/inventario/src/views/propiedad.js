@@ -4,242 +4,136 @@ define('inventario:views/propiedad', [
     'inventario:views/modules/calculadora-notas',
     'inventario:views/modules/modal-crear-recaudo'
 ], function (Dep, SemaforoManager, CalculadoraNotas, ModalCrearRecaudoManager) {
-    
+
     return Dep.extend({
-        
+
         template: 'inventario:propiedad',
 
         setup: function () {
             Dep.prototype.setup.call(this);
-            
+
             this.propiedadId = this.options.propiedadId;
-            
+
             if (!this.propiedadId) {
                 console.error('❌ NO HAY propiedadId');
                 Espo.Ui.error('ID de propiedad no proporcionado');
                 this.getRouter().navigate('#InvLista', { trigger: true });
                 return;
             }
-            
-            this.datosYaCargados = false;
-            this.cargandoDatos = false;  // NUEVO
+
+            this.datosYaCargados    = false;
+            this.cargandoDatos      = false;
             this.vistaYaRenderizada = false;
-            
-            this.inventarioId = null;
+
+            this.inventarioId   = null;
             this.inventarioData = null;
-            this.propiedadData = null;
-            
+            this.propiedadData  = null;
+
             this.subBuyersSeleccionados = [];
             this.initializeListasRecaudos();
-            
-            this.semaforoManager = new SemaforoManager(this);
-            this.calculadoraNotas = new CalculadoraNotas(this);
-            this.modalCrearRecaudo = new ModalCrearRecaudoManager(this);
-            
-            this.valoresRecaudosLegal = {};
-            this.valoresRecaudosMercadeo = {};
+
+            this.semaforoManager    = new SemaforoManager(this);
+            this.calculadoraNotas   = new CalculadoraNotas(this);
+            this.modalCrearRecaudo  = new ModalCrearRecaudoManager(this);
+
+            this.valoresRecaudosLegal     = {};
+            this.valoresRecaudosMercadeo  = {};
             this.valoresRecaudosApoderado = {};
-            
-            this.panelsInitialized = false;
+
+            this.panelsInitialized          = false;
             this.datosCompletamenteCargados = false;
-            
-            // NUEVO: Contador de cargas pendientes
-            this.cargasPendientes = 0;
-            
+            this.cargasPendientes           = 0;
+
             this.cargarDatos();
         },
 
-        registrarCargaPendiente: function() {
+        registrarCargaPendiente: function () {
             this.cargasPendientes++;
-            console.log('📊 Cargas pendientes:', this.cargasPendientes);
         },
 
-        marcarCargaCompletada: function() {
+        marcarCargaCompletada: function () {
             this.cargasPendientes--;
-            console.log('✅ Carga completada. Pendientes:', this.cargasPendientes);
-            
             if (this.cargasPendientes <= 0) {
-                this.cargasPendientes = 0;
+                this.cargasPendientes           = 0;
                 this.datosCompletamenteCargados = true;
-                
-                console.log('🎉 CARGAS COMPLETADAS');
-                
-                // Calcular notas
                 this.calcularNotasPorcentajes();
-                
-                // Forzar cierre
+
+                // Cerrar todos los paneles
+                this.$el.find('.panel-body').hide();
+                this.$el.find('.panel-heading .fas')
+                    .removeClass('fa-chevron-up').addClass('fa-chevron-down');
+
                 var self = this;
-                this.$el.find('.panel-body').each(function(index, elem) {
-                    var $body = $(elem);
-                    if ($body.is(':visible')) {
-                        $body.hide();
-                        var $panel = $body.closest('.panel');
-                        $panel.find('.fa-chevron-up').removeClass('fa-chevron-up').addClass('fa-chevron-down');
-                        console.log('🔒 Pre-timeout cerrado panel #' + index);
-                    }
-                });
-                console.log('🔒 Panels cerrados antes de habilitar');
-                
-                // CAMBIADO: De 500ms a 200ms para reducir ventana de clicks
-                console.log('⏰ Esperando 200ms...');
-                
-                setTimeout(function() {
-                    console.log('⏰ Timeout completado');
-                    
-                    // Triple verificación
-                    self.$el.find('.panel-body').each(function(index, elem) {
-                        var $body = $(elem);
-                        if ($body.is(':visible')) {
-                            $body.hide();
-                            var $panel = $body.closest('.panel');
-                            $panel.find('.fa-chevron-up').removeClass('fa-chevron-up').addClass('fa-chevron-down');
-                            console.log('⚠️ PANEL TODAVÍA ABIERTO #' + index + ' - cerrado forzosamente');
-                        }
-                    });
-                    
-                    if (self.isRendered()) {
-                        self.inicializarPanels();
-                    }
-                    
-                    // Cuádruple verificación 100ms después
-                    setTimeout(function() {
-                        self.$el.find('.panel-body').each(function(index, elem) {
-                            var $body = $(elem);
-                            if ($body.is(':visible')) {
-                                $body.hide();
-                                var $panel = $body.closest('.panel');
-                                $panel.find('.fa-chevron-up').removeClass('fa-chevron-up').addClass('fa-chevron-down');
-                                console.log('🚨 PANEL REABIERTO #' + index + ' - cerrando OTRA VEZ');
-                            }
-                        });
-                    }, 100);
-                    
-                }, 200); // REDUCIDO de 500ms a 200ms
+                setTimeout(function () {
+                    self.$el.find('.panel-body').hide();
+                    if (self.isRendered()) self.inicializarPanels();
+                }, 200);
             }
         },
 
         initializeListasRecaudos: function () {
             this.listasRecaudos = {
                 legal: {
-                    natural: { mostrados: [], disponibles: [], esPorDefecto: false },
-                    juridico: { mostrados: [], disponibles: [], esPorDefecto: false },
+                    natural:    { mostrados: [], disponibles: [], esPorDefecto: false },
+                    juridico:   { mostrados: [], disponibles: [], esPorDefecto: false },
                     tipoActual: 'natural'
                 },
-                mercadeo: { mostrados: [], disponibles: [], esPorDefecto: false },
+                mercadeo:  { mostrados: [], disponibles: [], esPorDefecto: false },
                 apoderado: { mostrados: [], disponibles: [], esPorDefecto: false }
             };
         },
 
         afterRender: function () {
             Dep.prototype.afterRender.call(this);
-            
-            // NUEVO: Evitar múltiples renders
-            if (this.vistaYaRenderizada) {
-                console.log('⚠️ Vista ya renderizada, saltando afterRender');
-                return;
-            }
+
+            if (this.vistaYaRenderizada) return;
             this.vistaYaRenderizada = true;
-            
-            console.log('🎨 afterRender iniciado');
-            console.log('📍 panelsInitialized:', this.panelsInitialized);
-            console.log('📍 datosCompletamenteCargados:', this.datosCompletamenteCargados);
-            console.log('📍 datosYaCargados:', this.datosYaCargados);
-            
+
             this.setupEventListeners();
-            
-            if (this.calculadoraNotas) {
-                this.calculadoraNotas.inicializarPorcentajes();
-            }
-            
-            if (this.modalCrearRecaudo) {
-                this.modalCrearRecaudo.inicializar();
-            }
-            
+
+            if (this.calculadoraNotas) this.calculadoraNotas.inicializarPorcentajes();
+            if (this.modalCrearRecaudo) this.modalCrearRecaudo.inicializar();
+
             this.actualizarEstadosOtros();
-            
-            // Cierre post-render
+
             var self = this;
-            setTimeout(function() {
-                console.log('🚫 CIERRE POST-RENDER (100ms)');
-                self.$el.find('.panel-body').each(function(index, elem) {
-                    var $body = $(elem);
-                    if ($body.is(':visible')) {
-                        $body.hide();
-                        var $panel = $body.closest('.panel');
-                        $panel.find('.fa-chevron-up').removeClass('fa-chevron-up').addClass('fa-chevron-down');
-                        console.log('  → Cerrado panel #' + index);
-                    }
-                });
+            setTimeout(function () {
+                self.$el.find('.panel-body').hide();
+                self.$el.find('.panel-heading .fas')
+                    .removeClass('fa-chevron-up').addClass('fa-chevron-down');
             }, 100);
-            
-            console.log('✅ afterRender completado (SIN inicializar panels)');
         },
 
-        inicializarPanels: function() {
-            // Protección: Solo ejecutar UNA VEZ
-            if (this.panelsInitialized) {
-                console.log('⚠️ Panels ya inicializados, saliendo...');
-                return;
-            }
-            
-            console.log('🎬 inicializarPanels llamado');
-            
+        inicializarPanels: function () {
+            if (this.panelsInitialized) return;
             this.panelsInitialized = true;
             this.inicializarSelect2SubBuyers();
-            
-            console.log('✅ Panels HABILITADOS');
         },
 
         setupEventListeners: function () {
             var self = this;
-            
-            // Toggle panels - CORREGIDO para evitar cierre automático
+
+            // Toggle panels
             this.$el.on('click', '[data-action="toggle-panel"]', function (e) {
                 e.preventDefault();
                 e.stopPropagation();
-                
-                console.log('📍 Click en toggle-panel');
-                console.log('  → panelsInitialized:', self.panelsInitialized);
-                console.log('  → datosCompletamenteCargados:', self.datosCompletamenteCargados);
-                
-                // CRÍTICO: Bloquear si aún no se habilitan los panels
-                if (!self.panelsInitialized) {
-                    console.log('❌ BLOQUEADO - esperando habilitación');
-                    return false;
-                }
-                
-                // NUEVO: Bloquear si los datos no terminaron de cargar
-                if (!self.datosCompletamenteCargados) {
-                    console.log('❌ BLOQUEADO - esperando carga de datos');
-                    return false;
-                }
-                
-                console.log('✅ PERMITIDO');
+                if (!self.panelsInitialized || !self.datosCompletamenteCargados) return false;
                 self.togglePanel($(this).closest('.panel-heading')[0]);
             });
 
+            // Buyer persona → cargar sub buyers
             this.$el.find('#buyerPersona').on('change', function (e) {
-                var buyerSeleccionado = $(e.currentTarget).val();
-                
-                // Limpiar selecciones anteriores
                 self.subBuyersSeleccionados = [];
-                
-                // Cargar nuevos sub buyers
-                self.cargarSubBuyersDisponibles(buyerSeleccionado);
+                self.cargarSubBuyersDisponibles($(e.currentTarget).val());
             });
 
-
-            // Botones de navegación
+            // Volver / cancelar
             this.$el.on('click', '[data-action="volver"], [data-action="cancelar"]', function () {
-                console.log('🔄 Volviendo a lista (recarga completa)');
-                // Opción 1: Recargar completamente
                 window.location.href = '#InvLista';
                 window.location.reload();
-                
-                // Opción 2 (alternativa): Solo navegar
-                // self.getRouter().navigate('#InvLista', { trigger: true });
             });
 
+            // Guardar
             this.$el.on('click', '[data-action="guardar"]', function () {
                 self.guardarInventario();
             });
@@ -248,58 +142,48 @@ define('inventario:views/propiedad', [
             this.$el.on('change', 'input[name="apoderado"]', function (e) {
                 var mostrar = $(e.currentTarget).val() === 'true';
                 self.mostrarObligaciones(mostrar);
-                
                 if (mostrar && self.listasRecaudos.apoderado.mostrados.length === 0) {
                     self.cargarYMostrarRecaudosApoderado();
                 }
-                
-                self.calcularPorcentajeApoderado();
             });
 
-            // Tipo de persona
+            // Tipo persona
             this.$el.on('change', '#tipoPersona', function (e) {
                 self.cargarYMostrarRecaudosLegales($(e.target).val());
                 self.calcularNotasPorcentajes();
             });
 
-            // Buyer persona
+            // Buyer persona (delegado)
             this.$el.on('change', '#buyerPersona', function (e) {
                 self.cargarSubBuyersDisponibles($(e.target).val());
             });
 
             // Semáforos
-            if (this.semaforoManager) {
-                this.semaforoManager.setupEventListeners();
-            }
-            
-            // Recaudos
+            if (this.semaforoManager) this.semaforoManager.setupEventListeners();
+
             this.$el.on('click', '[data-action="selectRecaudoSemaforo"]', function (e) {
                 self.seleccionarRecaudoSemaforo(e);
             });
-            
+
             this.$el.on('click', '[data-action="showInfoRecaudo"]', function (e) {
-                e.preventDefault();
-                e.stopPropagation();
+                e.preventDefault(); e.stopPropagation();
                 self.mostrarInfoRecaudoModal(e);
             });
-            
+
             this.$el.on('click', '[data-action="eliminarRecaudo"]', function (e) {
-                e.preventDefault();
-                e.stopPropagation();
+                e.preventDefault(); e.stopPropagation();
                 self.manejarEliminacionRecaudo(e);
             });
-            
+
             this.$el.on('click', '.btn-agregar-recaudo', function (e) {
                 e.preventDefault();
                 self.manejarAgregarRecaudo(e);
             });
-            
-            // Selectores en panel "Otros"
+
             this.$el.on('change', '.select-otros', function (e) {
                 self.manejarCambioSelectOtros(e);
             });
-            
-            // Escuchar evento de recaudo creado
+
             $(document).on('recaudoCreado.inventario', function (e, data) {
                 self.onRecaudoCreado(data);
             });
@@ -307,106 +191,39 @@ define('inventario:views/propiedad', [
 
         togglePanel: function (element) {
             var $heading = $(element);
-            var $panel = $heading.closest('.panel');
-            var $body = $panel.find('.panel-body');
-            var $icon = $heading.find('.fa-chevron-down, .fa-chevron-up');
-            
-            // Limpiar texto del título
-            var panelTitle = $panel.find('.panel-title').clone();
-            panelTitle.find('.nota-percentaje').remove();
-            panelTitle.find('.fas').remove();
-            var titleText = panelTitle.text().trim();
-            
-            var wasVisible = $body.is(':visible');
-            
-            console.log('🔘 togglePanel - Título:', titleText);
-            console.log('  → Estado anterior:', wasVisible ? 'VISIBLE' : 'OCULTO');
-            console.log('  → panelsInitialized:', this.panelsInitialized);
-            
-            if (wasVisible) {
-                console.log('  → Acción: CERRANDO');
-                
-                // NUEVO: Forzar hide() en lugar de slideUp()
-                $body.hide(); // Cambio de slideUp a hide
-                $icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
-                
-                console.log('  → Hide() ejecutado');
-            } else {
-                console.log('  → Acción: ABRIENDO');
-                
-                // NUEVO: Forzar show() en lugar de slideDown()
-                $body.show(); // Cambio de slideDown a show
-                $icon.removeClass('fa-chevron-down').addClass('fa-chevron-up');
-                
-                console.log('  → Show() ejecutado');
-            }
-            
-            // Verificación inmediata
-            var estadoFinal = $body.is(':visible');
-            console.log('  ✓ Estado final INMEDIATO:', estadoFinal ? 'VISIBLE' : 'OCULTO');
-            
-            // Verificación post-animación
-            setTimeout(function() {
-                var estadoFinalPost = $body.is(':visible');
-                if (estadoFinal !== estadoFinalPost) {
-                    console.log('  ⚠️ CAMBIÓ después de 250ms:', estadoFinalPost ? 'VISIBLE' : 'OCULTO');
-                }
-            }, 250);
-        },
+            var $panel   = $heading.closest('.panel');
+            var $body    = $panel.find('.panel-body');
+            var $icon    = $heading.find('.fa-chevron-down, .fa-chevron-up');
 
-        verificarEstadoPanels: function() {
-            console.log('🔍 VERIFICANDO ESTADO DE PANELS:');
-            this.$el.find('.panel').each(function(index, panel) {
-                var $panel = $(panel);
-                var $body = $panel.find('.panel-body');
-                var $title = $panel.find('.panel-title').clone();
-                $title.find('.nota-percentaje').remove();
-                $title.find('.fas').remove();
-                var titleText = $title.text().trim();
-                var visible = $body.is(':visible');
-                
-                console.log('  Panel #' + index + ': ' + titleText + ' → ' + (visible ? '✅ VISIBLE' : '❌ OCULTO'));
-            });
+            if ($body.is(':visible')) {
+                $body.hide();
+                $icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+            } else {
+                $body.show();
+                $icon.removeClass('fa-chevron-down').addClass('fa-chevron-up');
+            }
         },
 
         mostrarObligaciones: function (mostrar) {
-            var $contenedorRecaudos = this.$el.find('#contenedor-recaudos-apoderado');
-            var $panelAgregar = this.$el.find('#panel-agregar-apoderado');
-            
-            if (mostrar) {
-                $contenedorRecaudos.slideDown(200);
-                $panelAgregar.slideDown(200);
-            } else {
-                $contenedorRecaudos.slideUp(200);
-                $panelAgregar.slideUp(200);
-            }
+            var $cont  = this.$el.find('#contenedor-recaudos-apoderado');
+            var $panel = this.$el.find('#panel-agregar-apoderado');
+            if (mostrar) { $cont.slideDown(200); $panel.slideDown(200); }
+            else         { $cont.slideUp(200);   $panel.slideUp(200);   }
         },
 
         cargarDatos: function () {
-            // Evitar doble carga
-            if (this.datosYaCargados || this.cargandoDatos) {
-                console.log('⚠️ Datos ya cargados o cargando, saltando duplicado');
-                return;
-            }
-            
+            if (this.datosYaCargados || this.cargandoDatos) return;
             this.cargandoDatos = true;
-            console.log('🔄 Iniciando carga de datos...');
-            
+
             var self = this;
-            
-            Espo.Ajax.getRequest('InvPropiedades/action/getOrCreate', {
-                propiedadId: this.propiedadId
-            })
+            Espo.Ajax.getRequest('InvPropiedades/action/getOrCreate', { propiedadId: this.propiedadId })
                 .then(function (response) {
                     if (response.success) {
                         self.inventarioData = response.data.inventario;
-                        self.propiedadData = response.data.propiedad;
-                        self.inventarioId = self.inventarioData.id;
-                        
+                        self.propiedadData  = response.data.propiedad;
+                        self.inventarioId   = self.inventarioData.id;
                         self.datosYaCargados = true;
-                        self.cargandoDatos = false;
-                        
-                        console.log('✅ Datos cargados, llamando mostrarDatos()');
+                        self.cargandoDatos   = false;
                         self.mostrarDatos();
                     } else {
                         self.$el.find('#loading-container').hide();
@@ -425,1201 +242,687 @@ define('inventario:views/propiedad', [
         },
 
         mostrarDatos: function () {
-            var self = this;
-            
-            try {
-                this.$el.find('#loading-container').hide();
-                this.$el.find('#form-container').show();
-                
-                // Panel 1: Información de la propiedad
-                this.mostrarInfoPropiedad();
-                
-                // Panel 2: Requisitos legales
-                var tipoPersona = this.inventarioData.tipoPersona || 'Natural';
-                this.$el.find('#tipoPersona').val(tipoPersona);
-                
-                this.registrarCargaPendiente();
-                this.cargarYMostrarRecaudosLegales(tipoPersona);
-                
-                // Panel 3: Mercadeo
-                this.registrarCargaPendiente();
-                this.mostrarInfoMercadeo();
-                
-                // Panel 4: Apoderado
-                this.mostrarInfoApoderado();
-                
-                // Panel 5: Otros
-                this.mostrarInfoOtros();
-                
-                console.log('✅ Datos mostrados en UI');
-                
-                // NUEVO: Asegurar que todos los panels estén cerrados
-                this.$el.find('.panel-body').hide();
-                this.$el.find('.panel-heading .fas').removeClass('fa-chevron-up').addClass('fa-chevron-down');
-                console.log('🔒 Todos los panels cerrados forzosamente');
-                
-            } catch (error) {
-                console.error('Error en mostrarDatos:', error);
-                this.$el.find('#loading-container').hide();
-                this.$el.find('#form-container').show();
-                
-                this.cargasPendientes = 0;
-                this.datosCompletamenteCargados = true;
-                if (this.isRendered()) {
-                    this.inicializarPanels();
-                }
-            }
-            console.log('✅ Datos mostrados en UI');
-        
-            // NUEVO: Cerrar forzosamente INMEDIATAMENTE
-            this.$el.find('.panel-body').each(function(index, elem) {
-                $(elem).hide();
-            });
-            this.$el.find('.panel-heading .fa-chevron-up').removeClass('fa-chevron-up').addClass('fa-chevron-down');
-            console.log('🔒 Todos los panels cerrados forzosamente (post-mostrarDatos)');
+            this.$el.find('#loading-container').hide();
+            this.$el.find('#form-container').show();
 
+            this.mostrarInfoPropiedad();
+
+            var tipoPersona = this.inventarioData.tipoPersona || 'Natural';
+            this.$el.find('#tipoPersona').val(tipoPersona);
+
+            this.registrarCargaPendiente();
+            this.cargarYMostrarRecaudosLegales(tipoPersona);
+
+            this.registrarCargaPendiente();
+            this.mostrarInfoMercadeo();
+
+            this.mostrarInfoOtros();
+            this.mostrarInfoApoderado();
+
+            // Cerrar paneles
+            this.$el.find('.panel-body').hide();
+            this.$el.find('.panel-heading .fas')
+                .removeClass('fa-chevron-up').addClass('fa-chevron-down');
         },
 
-
         mostrarInfoPropiedad: function () {
-            this.$el.find('#prop-tipoOperacion').text(this.propiedadData.tipoOperacion || '-');
-            this.$el.find('#prop-tipoPropiedad').text(this.propiedadData.tipoPropiedad || '-');
+            this.$el.find('#prop-tipoOperacion').text(this.propiedadData.tipoOperacion  || '-');
+            this.$el.find('#prop-tipoPropiedad').text(this.propiedadData.tipoPropiedad  || '-');
             this.$el.find('#prop-subTipoPropiedad').text(this.propiedadData.subTipoPropiedad || '-');
             this.$el.find('#prop-m2C').text(this.propiedadData.m2C ? this.propiedadData.m2C + ' m²' : '-');
             this.$el.find('#prop-m2T').text(this.propiedadData.m2T ? this.propiedadData.m2T + ' m²' : '-');
             this.$el.find('#prop-ubicacion').text(this.propiedadData.ubicacion || '-');
             this.$el.find('#prop-asesor').text(this.propiedadData.asesorNombre || '-');
-            
-            // Fecha de publicación
+
             if (this.propiedadData.fechaAlta) {
-                var fecha = new Date(this.propiedadData.fechaAlta);
-                this.$el.find('#prop-fechaAlta').text(fecha.toLocaleDateString('es-ES'));
+                this.$el.find('#prop-fechaAlta').text(
+                    new Date(this.propiedadData.fechaAlta).toLocaleDateString('es-ES')
+                );
             } else {
                 this.$el.find('#prop-fechaAlta').text('-');
             }
-            
-            // Días en el mercado
-            var diasEnMercado = this.calcularDiasEnMercado(this.propiedadData.fechaAlta);
-            this.$el.find('#prop-diasMercado').text(diasEnMercado);
-            
-            // Status
-            var $statusBadge = this.$el.find('#prop-status');
-            $statusBadge.text(this.propiedadData.status || '-');
-            
+
+            this.$el.find('#prop-diasMercado').text(this.calcularDiasEnMercado(this.propiedadData.fechaAlta));
+
+            var $badge = this.$el.find('#prop-status');
+            $badge.text(this.propiedadData.status || '-');
             var statusColors = {
-                'Disponible': '#27ae60',
-                'Reservada': '#f39c12',
-                'Vendida': '#e74c3c',
-                'Rentada': '#3498db',
-                'Retirada': '#95a5a6',
-                'En promocion': '#27ae60'
+                'Disponible': '#27ae60', 'Reservada': '#f39c12', 'Vendida': '#e74c3c',
+                'Rentada': '#3498db', 'Retirada': '#95a5a6', 'En promocion': '#27ae60'
             };
-            var color = statusColors[this.propiedadData.status] || '#95a5a6';
-            $statusBadge.css({ 'background-color': color, 'color': 'white' });
+            $badge.css({ 'background-color': statusColors[this.propiedadData.status] || '#95a5a6', 'color': 'white' });
         },
 
-        calcularDiasEnMercado: function(fechaAlta) {
+        calcularDiasEnMercado: function (fechaAlta) {
             if (!fechaAlta) return '-';
-            
-            var fechaAltaDate = new Date(fechaAlta);
-            var hoy = new Date();
-            
-            var diferenciaMs = hoy - fechaAltaDate;
-            var dias = Math.floor(diferenciaMs / (1000 * 60 * 60 * 24));
-            
-            return dias + ' días';
+            return Math.floor((new Date() - new Date(fechaAlta)) / (1000 * 60 * 60 * 24)) + ' días';
         },
 
         mostrarInfoMercadeo: function () {
             var self = this;
-            
             var buyerPersona = this.inventarioData.buyerPersona || this.inventarioData.buyer || 'Comprador';
             this.$el.find('#buyerPersona').val(buyerPersona);
-            
-            // Cargar recaudos de mercadeo (ya cuenta como pendiente)
+
             this.cargarYMostrarRecaudosMercadeo()
-                .then(function() {
-                    // Marcar como completado
-                    self.marcarCargaCompletada();
-                })
-                .catch(function(error) {
-                    console.error('Error en mostrarInfoMercadeo:', error);
-                    self.marcarCargaCompletada(); // Marcar aunque falle
-                });
-            
-            // Cargar sub buyers (no bloquean)
+                .then(function ()  { self.marcarCargaCompletada(); })
+                .catch(function () { self.marcarCargaCompletada(); });
+
             this.cargarSubBuyersDisponibles(buyerPersona);
             this.cargarSubBuyersSeleccionados();
         },
 
         mostrarInfoApoderado: function () {
-            var self = this;
+            var self      = this;
             var apoderado = this.inventarioData.apoderado || false;
-            
+
             if (apoderado) {
                 this.$el.find('input[name="apoderado"][value="true"]').prop('checked', true);
                 this.mostrarObligaciones(true);
-                
-                // Registrar carga pendiente
                 this.registrarCargaPendiente();
-                
                 this.cargarYMostrarRecaudosApoderado()
-                    .then(function() {
-                        self.marcarCargaCompletada();
-                    })
-                    .catch(function(error) {
-                        console.error('Error en mostrarInfoApoderado:', error);
-                        self.marcarCargaCompletada();
-                    });
+                    .then(function ()  { self.marcarCargaCompletada(); })
+                    .catch(function () { self.marcarCargaCompletada(); });
             } else {
                 this.$el.find('input[name="apoderado"][value="false"]').prop('checked', true);
                 this.mostrarObligaciones(false);
-                this.$el.find('#nota-apoderado').text('0%');
-                // No hay carga pendiente
             }
         },
 
         mostrarInfoOtros: function () {
-            // VALORES POR DEFECTO: TODOS ROJOS 
-            var exclusividad = this.inventarioData.exclusividad || 'Sin exclusividad';  // ROJO
-            var precio = this.inventarioData.precio || 'Fuera del rango de precio';     // ROJO
-            var ubicacion = this.inventarioData.ubicacion || 'Ubicación no atractiva';  // ROJO
-            var demanda = this.inventarioData.demanda || 'Baja demanda';                // ROJO
-            
+            var exclusividad = this.inventarioData.exclusividad || 'Sin exclusividad';
+            var precio       = this.inventarioData.precio       || 'Fuera del rango de precio';
+            var ubicacion    = this.inventarioData.ubicacion    || 'Ubicación no atractiva';
+            var demanda      = this.inventarioData.demanda      || 'Baja demanda';
+
             this.$el.find('#select-exclusividad').val(exclusividad);
             this.$el.find('#select-precio').val(precio);
             this.$el.find('#select-ubicacion').val(ubicacion);
             this.$el.find('#select-demanda').val(demanda);
-            
+
             this.actualizarEstiloSelect('exclusividad', exclusividad);
-            this.actualizarEstiloSelect('precio', precio);
-            this.actualizarEstiloSelect('ubicacion', ubicacion);
-            this.actualizarEstiloSelect('demanda', demanda);
+            this.actualizarEstiloSelect('precio',       precio);
+            this.actualizarEstiloSelect('ubicacion',    ubicacion);
+            this.actualizarEstiloSelect('demanda',      demanda);
         },
 
-        // ========== SUB BUYERS (MULTI-SELECT) ==========
-        
+        // ========== SUB BUYERS ==========
+
         inicializarSelect2SubBuyers: function () {
             var $select = this.$el.find('#subBuyerPersona');
-            
-            if ($select.length === 0) {
-                console.warn('⚠️ No se encontró #subBuyerPersona');
-                return;
-            }
-            
-            // IMPORTANTE: Verificar que Select2 esté disponible
-            if (typeof $select.select2 !== 'function') {
-                console.warn('⚠️ Select2 no está disponible');
-                return;
-            }
-            
+            if ($select.length === 0 || typeof $select.select2 !== 'function') return;
             try {
-                // Inicializar Select2 con configuración para múltiples
-                $select.select2({
-                    placeholder: 'Seleccione sub buyers',
-                    allowClear: true,
-                    multiple: true, // HABILITADO
-                    width: '100%'
-                });
-                
-                console.log('✅ Select2 inicializado para múltiples SubBuyers');
-            } catch (error) {
-                console.error('Error inicializando Select2:', error);
-            }
+                $select.select2({ placeholder: 'Seleccione sub buyers', allowClear: true, multiple: true, width: '100%' });
+            } catch (e) { console.error('Error Select2:', e); }
         },
 
         cargarSubBuyersDisponibles: function (buyerTipo) {
             var self = this;
             var $container = this.$el.find('#subbuyers-checkbox-container');
-            
-            // Mostrar loading
-            $container.html('<div class="text-center" style="padding: 20px; color: #999;"><i class="fas fa-spinner fa-spin"></i> Cargando opciones...</div>');
-            
-            Espo.Ajax.getRequest('InvPropiedades/action/getSubBuyersByBuyer', {
-                buyer: buyerTipo
-            })
-            .then(function (response) {
-                if (response.success && response.data && response.data.length > 0) {
-                    // Renderizar checkboxes
-                    var html = '';
-                    
-                    response.data.forEach(function (subBuyer) {
-                        var isChecked = self.subBuyersSeleccionados.includes(subBuyer.id) ? 'checked' : '';
-                        
-                        html += '<label class="subbuyer-checkbox-option">';
-                        html += '  <input type="checkbox" ';
-                        html += '    class="subbuyer-checkbox" ';
-                        html += '    value="' + subBuyer.id + '" ';
-                        html += '    data-name="' + self.escapeHtml(subBuyer.name) + '" ';
-                        html += '    ' + isChecked + '>';
-                        html += '  <span class="checkbox-custom"></span>';
-                        html += '  <span class="checkbox-label">' + self.escapeHtml(subBuyer.name) + '</span>';
-                        html += '</label>';
-                    });
-                    
-                    $container.html(html);
-                    
-                    // Event listener para cambios
-                    $container.find('.subbuyer-checkbox').on('change', function() {
-                        self.actualizarSubBuyersSeleccionados();
-                    });
-                    
-                    console.log('✅ SubBuyers renderizados como checkboxes:', response.data.length);
-                } else {
-                    $container.html('<div class="subbuyers-no-options"><i class="fas fa-info-circle"></i> No hay sub buyers disponibles para este tipo</div>');
-                }
-            })
-            .catch(function (error) {
-                console.error('Error cargando sub buyers:', error);
-                $container.html('<div class="subbuyers-no-options" style="color: #e74c3c;"><i class="fas fa-exclamation-circle"></i> Error al cargar sub buyers</div>');
-            });
+            $container.html('<div class="text-center" style="padding:20px;color:#999;"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>');
+
+            Espo.Ajax.getRequest('InvPropiedades/action/getSubBuyersByBuyer', { buyer: buyerTipo })
+                .then(function (response) {
+                    if (response.success && response.data && response.data.length > 0) {
+                        var html = '';
+                        response.data.forEach(function (sb) {
+                            var checked = self.subBuyersSeleccionados.includes(sb.id) ? 'checked' : '';
+                            html += '<label class="subbuyer-checkbox-option">';
+                            html += '<input type="checkbox" class="subbuyer-checkbox" value="' + sb.id + '" data-name="' + self.escapeHtml(sb.name) + '" ' + checked + '>';
+                            html += '<span class="checkbox-custom"></span>';
+                            html += '<span class="checkbox-label">' + self.escapeHtml(sb.name) + '</span>';
+                            html += '</label>';
+                        });
+                        $container.html(html);
+                        // Volvemos a adjuntar el evento de cambio después de que el HTML esté en el DOM
+                        $container.find('.subbuyer-checkbox').on('change', function () {
+                            self.actualizarSubBuyersSeleccionados();
+                        });
+                    } else {
+                        $container.html('<div class="subbuyers-no-options"><i class="fas fa-info-circle"></i> No hay sub buyers disponibles</div>');
+                    }
+                })
+                .catch(function () {
+                    $container.html('<div class="subbuyers-no-options" style="color:#e74c3c;"><i class="fas fa-exclamation-circle"></i> Error al cargar</div>');
+                });
         },
 
-        actualizarSubBuyersSeleccionados: function() {
+        actualizarSubBuyersSeleccionados: function () {
+            var self = this;
+            // Usamos un array temporal para evitar problemas de contexto
             var seleccionados = [];
-            
-            this.$el.find('.subbuyer-checkbox:checked').each(function() {
-                seleccionados.push($(this).val());
+            // Aseguramos que los elementos existen antes de iterar
+            this.$el.find('.subbuyer-checkbox:checked').each(function () {
+                var valor = $(this).val();
+                if (valor !== undefined && valor !== null) {
+                    seleccionados.push(valor);
+                }
             });
-            
             this.subBuyersSeleccionados = seleccionados;
-            
-            console.log('📋 SubBuyers seleccionados:', seleccionados);
         },
 
-        // LÍNEA ~390 - Modificar cargarSubBuyersSeleccionados
         cargarSubBuyersSeleccionados: function () {
             var self = this;
-            
-            if (!this.inventarioId) {
-                console.log('No hay inventarioId aún');
-                return;
-            }
-            
-            Espo.Ajax.getRequest('InvPropiedades/action/getSubBuyersPropiedad', {
-                inventarioId: this.inventarioId
-            })
-            .then(function (response) {
-                if (response.success && response.data) {
-                    self.subBuyersSeleccionados = response.data.map(function (sb) {
-                        return sb.id;
-                    });
-                    
-                    // Marcar checkboxes correspondientes
-                    self.subBuyersSeleccionados.forEach(function(sbId) {
-                        self.$el.find('.subbuyer-checkbox[value="' + sbId + '"]').prop('checked', true);
-                    });
-                    
-                    console.log('✅ Sub buyers cargados y marcados:', self.subBuyersSeleccionados);
-                }
-            })
-            .catch(function (error) {
-                console.error('Error cargando sub buyers seleccionados:', error);
-            });
+            if (!this.inventarioId) return;
+
+            Espo.Ajax.getRequest('InvPropiedades/action/getSubBuyersPropiedad', { inventarioId: this.inventarioId })
+                .then(function (response) {
+                    if (response.success && response.data) {
+                        self.subBuyersSeleccionados = response.data.map(function (sb) { return sb.id; });
+                        // Usamos un setTimeout para asegurar que el DOM se haya actualizado
+                        setTimeout(function() {
+                            self.subBuyersSeleccionados.forEach(function (sbId) {
+                                self.$el.find('.subbuyer-checkbox[value="' + sbId + '"]').prop('checked', true);
+                            });
+                        }, 100);
+                    }
+                });
         },
+
 
         obtenerSubBuyersSeleccionados: function () {
             var seleccionados = [];
-            
-            this.$el.find('.subbuyer-checkbox:checked').each(function() {
+            this.$el.find('.subbuyer-checkbox:checked').each(function () {
                 seleccionados.push($(this).val());
             });
-            
-            console.log('📤 Enviando SubBuyers:', seleccionados);
-            
             return seleccionados;
         },
 
-        // ========== CARGA DE RECAUDOS ==========
-        
+        // ========== RECAUDOS ==========
+
         cargarYMostrarRecaudosLegales: function (tipoPersona) {
-            var self = this;
-            var $contenedor = this.$el.find('#contenedor-recaudos-legal');
-            
-            $contenedor.html('<div class="text-center" style="padding: 20px;"><div class="spinner-small"></div><p>Cargando requisitos legales...</p></div>');
-            
+            var self      = this;
+            var $cont     = this.$el.find('#contenedor-recaudos-legal');
+            $cont.html('<div class="text-center" style="padding:20px;"><div class="spinner-small"></div><p>Cargando...</p></div>');
+
             return this.cargarRecaudosPorTipo('legal', tipoPersona)
                 .then(function (resultado) {
-                    var tipoPersonaLower = tipoPersona.toLowerCase();
-                    self.listasRecaudos.legal[tipoPersonaLower] = resultado;
-                    self.listasRecaudos.legal.tipoActual = tipoPersonaLower;
-                    
-                    self.actualizarVistaRecaudos('legal', tipoPersonaLower, resultado);
+                    var tipo = tipoPersona.toLowerCase();
+                    self.listasRecaudos.legal[tipo]        = resultado;
+                    self.listasRecaudos.legal.tipoActual   = tipo;
+                    self.actualizarVistaRecaudos('legal', tipo, resultado);
                     self.actualizarDropdownRecaudos('legal', resultado.disponibles);
-                    
-                    // Marcar como completado
                     self.marcarCargaCompletada();
-                    
                     return resultado;
                 })
-                .catch(function(error) {
-                    console.error('Error cargando legales:', error);
-                    $contenedor.html('<div class="alert alert-danger">Error al cargar requisitos legales</div>');
-                    self.marcarCargaCompletada(); // Marcar aunque falle
+                .catch(function (e) {
+                    $cont.html('<div class="alert alert-danger">Error al cargar requisitos legales</div>');
+                    self.marcarCargaCompletada();
                 });
         },
 
         cargarYMostrarRecaudosMercadeo: function () {
-            var self = this;
-            var $contenedor = this.$el.find('#contenedor-recaudos-mercadeo');
-            
-            $contenedor.html('<div class="text-center" style="padding: 20px;"><div class="spinner-small"></div><p>Cargando elementos de mercadeo...</p></div>');
-            
+            var self  = this;
+            var $cont = this.$el.find('#contenedor-recaudos-mercadeo');
+            $cont.html('<div class="text-center" style="padding:20px;"><div class="spinner-small"></div><p>Cargando...</p></div>');
+
             return this.cargarRecaudosPorTipo('mercadeo', 'Mercadeo')
                 .then(function (resultado) {
                     self.listasRecaudos.mercadeo = resultado;
-                    
                     self.actualizarVistaRecaudos('mercadeo', null, resultado);
                     self.actualizarDropdownRecaudos('mercadeo', resultado.disponibles);
-                    
                     return resultado;
                 })
-                .catch(function(error) {
-                    console.error('Error cargando mercadeo:', error);
-                    $contenedor.html('<div class="alert alert-danger">Error al cargar mercadeo</div>');
+                .catch(function () {
+                    $cont.html('<div class="alert alert-danger">Error al cargar mercadeo</div>');
                 });
         },
 
         cargarYMostrarRecaudosApoderado: function () {
-            var self = this;
-            var $contenedor = this.$el.find('#contenedor-recaudos-apoderado');
-            
+            var self  = this;
+            var $cont = this.$el.find('#contenedor-recaudos-apoderado');
+
             if (this.listasRecaudos.apoderado.mostrados.length > 0) {
                 this.actualizarVistaRecaudos('apoderado', null, this.listasRecaudos.apoderado);
-                this.calcularPorcentajeApoderado();
                 return Promise.resolve(this.listasRecaudos.apoderado);
             }
-            
-            $contenedor.html('<div class="text-center" style="padding: 20px;"><div class="spinner-small"></div><p>Cargando requisitos de apoderado...</p></div>');
-            
+
+            $cont.html('<div class="text-center" style="padding:20px;"><div class="spinner-small"></div><p>Cargando...</p></div>');
+
             return this.cargarRecaudosPorTipo('apoderado', 'Apoderado')
                 .then(function (resultado) {
                     self.listasRecaudos.apoderado = resultado;
-                    
                     self.actualizarVistaRecaudos('apoderado', null, resultado);
                     self.actualizarDropdownRecaudos('apoderado', resultado.disponibles);
-                    self.calcularPorcentajeApoderado();
-                    
                     return resultado;
                 })
-                .catch(function(error) {
-                    console.error('Error cargando apoderado:', error);
-                    $contenedor.html('<div class="alert alert-danger">Error al cargar apoderado</div>');
+                .catch(function () {
+                    $cont.html('<div class="alert alert-danger">Error al cargar apoderado</div>');
                 });
         },
 
         cargarRecaudosPorTipo: function (tipo, tipoBackend) {
             var self = this;
-            
             return new Promise(function (resolve, reject) {
                 Espo.Ajax.getRequest('InvPropiedades/action/getRecaudosGuardados', {
                     propiedadId: self.propiedadId,
                     tipo: tipoBackend
                 })
                 .then(function (response) {
-                    if (response.success && response.data) {
-                        var recaudosGuardados = response.data.recaudos || [];
-                        var esPorDefecto = response.data.esPorDefecto || false;
-                        
-                        // NUEVO: Guardar estados en memoria desde el servidor
-                        recaudosGuardados.forEach(function(recaudo) {
-                            var recaudoId = String(recaudo.id);
-                            var estado = recaudo.estado || 'Modificar/No Tiene';
-                            
-                            if (tipo === 'legal') {
-                                self.valoresRecaudosLegal[recaudoId] = estado;
-                            } else if (tipo === 'mercadeo') {
-                                self.valoresRecaudosMercadeo[recaudoId] = estado;
-                            } else if (tipo === 'apoderado') {
-                                self.valoresRecaudosApoderado[recaudoId] = estado;
-                            }
-                        });
-                        
-                        return Espo.Ajax.getRequest('InvPropiedades/action/getRecaudosByTipo', {
-                            tipo: tipoBackend
-                        })
+                    if (!response.success) { reject(new Error(response.error)); return; }
+                    var recaudosGuardados = response.data.recaudos || [];
+                    var esPorDefecto      = response.data.esPorDefecto || false;
+
+                    recaudosGuardados.forEach(function (r) {
+                        var id = String(r.id);
+                        if (tipo === 'legal')     self.valoresRecaudosLegal[id]     = r.estado || 'Modificar/No Tiene';
+                        if (tipo === 'mercadeo')  self.valoresRecaudosMercadeo[id]  = r.estado || 'Modificar/No Tiene';
+                        if (tipo === 'apoderado') self.valoresRecaudosApoderado[id] = r.estado || 'Modificar/No Tiene';
+                    });
+
+                    Espo.Ajax.getRequest('InvPropiedades/action/getRecaudosByTipo', { tipo: tipoBackend })
                         .then(function (response2) {
-                            if (response2.success && response2.data) {
-                                var todosRecaudos = response2.data;
-                                var recaudosMostradosIds = recaudosGuardados.map(function(r) {
-                                    return String(r.id);
-                                });
-                                
-                                var recaudosDisponibles = todosRecaudos.filter(function(recaudo) {
-                                    return !recaudosMostradosIds.includes(String(recaudo.id));
-                                });
-                                
-                                resolve({
-                                    mostrados: recaudosGuardados,
-                                    disponibles: recaudosDisponibles,
-                                    esPorDefecto: esPorDefecto
-                                });
-                            }
-                        });
-                    }
+                            if (!response2.success) { reject(new Error(response2.error)); return; }
+                            var todos    = response2.data || [];
+                            var mostIds  = recaudosGuardados.map(function (r) { return String(r.id); });
+                            var disponibles = todos.filter(function (r) { return !mostIds.includes(String(r.id)); });
+                            resolve({ mostrados: recaudosGuardados, disponibles: disponibles, esPorDefecto: esPorDefecto });
+                        })
+                        .catch(reject);
                 })
-                .catch(function (error) {
-                    console.error('Error cargando recaudos:', error);
-                    reject(error);
-                });
+                .catch(reject);
             });
         },
 
-        // ========== MANEJO DE RECAUDOS ==========
-        
+        // ========== UI RECAUDOS ==========
+
         manejarAgregarRecaudo: function (e) {
-            var $button = $(e.currentTarget);
-            var tipo = $button.data('tipo');
-            var $select = this.$el.find('#select-agregar-' + tipo);
+            var $btn      = $(e.currentTarget);
+            var tipo      = $btn.data('tipo');
+            var $select   = this.$el.find('#select-agregar-' + tipo);
             var recaudoId = $select.val();
-            
-            if (!recaudoId) {
-                Espo.Ui.warning('Por favor seleccione un elemento para agregar');
-                return;
-            }
-            
-            if (recaudoId === 'crear_nuevo') {
-                this.mostrarModalCrearRecaudo(tipo);
-                $select.val('');
-            } else {
-                this.agregarRecaudo(tipo, recaudoId);
-                $select.val('');
-            }
+            if (!recaudoId) { Espo.Ui.warning('Por favor seleccione un elemento'); return; }
+            if (recaudoId === 'crear_nuevo') { this.mostrarModalCrearRecaudo(tipo); $select.val(''); }
+            else { this.agregarRecaudo(tipo, recaudoId); $select.val(''); }
         },
 
         agregarRecaudo: function (campoId, recaudoId) {
             recaudoId = String(recaudoId);
-            
             var lista = this.obtenerListaActual(campoId);
-            
-            if (this.recaudoEstaEnMostrados(lista, recaudoId)) {
-                Espo.Ui.warning('Este recaudo ya está en la lista');
-                return;
-            }
-            
-            var recaudoIndex = lista.disponibles.findIndex(function(r) {
-                return String(r.id) === recaudoId;
-            });
-            
-            if (recaudoIndex === -1) {
-                Espo.Ui.warning('Recaudo no disponible');
-                return;
-            }
-            
-            var recaudo = lista.disponibles[recaudoIndex];
-            lista.disponibles.splice(recaudoIndex, 1);
-            lista.mostrados.push(recaudo);
+            if (this.recaudoEstaEnMostrados(lista, recaudoId)) { Espo.Ui.warning('Ya está en la lista'); return; }
+            var idx = lista.disponibles.findIndex(function (r) { return String(r.id) === recaudoId; });
+            if (idx === -1) { Espo.Ui.warning('No disponible'); return; }
+            lista.mostrados.push(lista.disponibles.splice(idx, 1)[0]);
             lista.esPorDefecto = false;
-            
-            var tipoPersona = campoId === 'legal' ? this.$el.find('#tipoPersona').val().toLowerCase() : null;
-            this.actualizarVistaRecaudos(campoId, tipoPersona, lista);
+            var tp = campoId === 'legal' ? this.$el.find('#tipoPersona').val().toLowerCase() : null;
+            this.actualizarVistaRecaudos(campoId, tp, lista);
             this.actualizarDropdownRecaudos(campoId, lista.disponibles);
-            
-            Espo.Ui.success('Recaudo agregado correctamente');
+            Espo.Ui.success('Recaudo agregado');
         },
 
         manejarEliminacionRecaudo: function (e) {
-            var $target = $(e.currentTarget);
-            var recaudoId = String($target.data('recaudo-id'));
-            var campoId = $target.data('campo-id');
-            
-            if (!confirm('¿Está seguro de que desea eliminar este elemento?')) {
-                return;
-            }
-            
+            var $t        = $(e.currentTarget);
+            var recaudoId = String($t.data('recaudo-id'));
+            var campoId   = $t.data('campo-id');
+            if (!confirm('¿Desea eliminar este elemento?')) return;
             this.eliminarRecaudo(campoId, recaudoId);
         },
 
         eliminarRecaudo: function (campoId, recaudoId) {
             recaudoId = String(recaudoId);
-            
             var lista = this.obtenerListaActual(campoId);
-            
-            var recaudoIndex = lista.mostrados.findIndex(function(r) {
-                return String(r.id) === recaudoId;
-            });
-            
-            if (recaudoIndex === -1) {
-                console.warn('Recaudo no encontrado en mostrados:', recaudoId);
-                return;
-            }
-            
-            var recaudo = lista.mostrados[recaudoIndex];
-            lista.mostrados.splice(recaudoIndex, 1);
-            
-            if (!this.recaudoEstaEnDisponibles(lista, recaudoId)) {
-                lista.disponibles.push(recaudo);
-            }
-            
+            var idx   = lista.mostrados.findIndex(function (r) { return String(r.id) === recaudoId; });
+            if (idx === -1) return;
+            var recaudo = lista.mostrados.splice(idx, 1)[0];
+            if (!this.recaudoEstaEnDisponibles(lista, recaudoId)) lista.disponibles.push(recaudo);
             this.eliminarValorRecaudo(campoId, recaudoId);
-            
-            var tipoPersona = campoId === 'legal' ? this.$el.find('#tipoPersona').val().toLowerCase() : null;
-            this.actualizarVistaRecaudos(campoId, tipoPersona, lista);
+            var tp = campoId === 'legal' ? this.$el.find('#tipoPersona').val().toLowerCase() : null;
+            this.actualizarVistaRecaudos(campoId, tp, lista);
             this.actualizarDropdownRecaudos(campoId, lista.disponibles);
-            
-            Espo.Ui.success('Recaudo eliminado de la lista');
+            Espo.Ui.success('Recaudo eliminado');
         },
 
         onRecaudoCreado: function (data) {
-            var tipo = data.tipo;
+            var tipo      = data.tipo;
             var recaudoId = String(data.recaudoId);
-            var recaudoNombre = data.recaudoNombre;
-            var recaudoTipo = data.recaudoTipo;
-            
-            var lista = this.obtenerListaActual(tipo);
-            
-            if (this.recaudoEstaEnMostrados(lista, recaudoId) || 
-                this.recaudoEstaEnDisponibles(lista, recaudoId)) {
-                return;
-            }
-            
-            var nuevoRecaudo = {
-                id: recaudoId,
-                name: recaudoNombre,
-                descripcion: '',
-                default: false,
-                tipo: recaudoTipo,
-                estado: 'Modificar/No Tiene'
-            };
-            
-            lista.mostrados.push(nuevoRecaudo);
+            var lista     = this.obtenerListaActual(tipo);
+            if (this.recaudoEstaEnMostrados(lista, recaudoId) || this.recaudoEstaEnDisponibles(lista, recaudoId)) return;
+            lista.mostrados.push({ id: recaudoId, name: data.recaudoNombre, descripcion: '', default: false, tipo: data.recaudoTipo, estado: 'Modificar/No Tiene' });
             lista.esPorDefecto = false;
-            
-            var tipoPersona = tipo === 'legal' ? this.$el.find('#tipoPersona').val().toLowerCase() : null;
-            this.actualizarVistaRecaudos(tipo, tipoPersona, lista);
+            var tp = tipo === 'legal' ? this.$el.find('#tipoPersona').val().toLowerCase() : null;
+            this.actualizarVistaRecaudos(tipo, tp, lista);
             this.actualizarDropdownRecaudos(tipo, lista.disponibles);
-            
-            Espo.Ui.success('Recaudo creado y agregado a la lista');
+            Espo.Ui.success('Recaudo creado y agregado');
         },
 
         // ========== UTILIDADES ==========
-        
+
         obtenerListaActual: function (campoId) {
             if (campoId === 'legal') {
-                // CORREGIDO: Verificar que existe el elemento antes de leer
-                var $tipoPersona = this.$el.find('#tipoPersona');
-                if ($tipoPersona.length === 0) {
-                    // Si no existe el elemento, usar el valor del inventario
-                    var tipoPersona = this.inventarioData.tipoPersona || 'Natural';
-                    return this.listasRecaudos.legal[tipoPersona.toLowerCase()];
-                }
-                var tipoPersona = $tipoPersona.val();
-                if (!tipoPersona) {
-                    tipoPersona = this.inventarioData.tipoPersona || 'Natural';
-                }
-                return this.listasRecaudos.legal[tipoPersona.toLowerCase()];
+                var $tp = this.$el.find('#tipoPersona');
+                var tp  = $tp.length ? $tp.val() : (this.inventarioData.tipoPersona || 'Natural');
+                return this.listasRecaudos.legal[(tp || 'Natural').toLowerCase()];
             }
             return this.listasRecaudos[campoId];
         },
 
-        recaudoEstaEnMostrados: function (lista, recaudoId) {
-            return lista.mostrados.some(function(r) {
-                return String(r.id) === String(recaudoId);
-            });
-        },
-
-        recaudoEstaEnDisponibles: function (lista, recaudoId) {
-            return lista.disponibles.some(function(r) {
-                return String(r.id) === String(recaudoId);
-            });
-        },
+        recaudoEstaEnMostrados:   function (lista, id) { return lista.mostrados.some(function (r)  { return String(r.id) === String(id); }); },
+        recaudoEstaEnDisponibles: function (lista, id) { return lista.disponibles.some(function (r) { return String(r.id) === String(id); }); },
 
         eliminarValorRecaudo: function (campoId, recaudoId) {
-            if (campoId === 'legal') {
-                delete this.valoresRecaudosLegal[recaudoId];
-                this.calcularNotasPorcentajes();
-            } else if (campoId === 'mercadeo') {
-                delete this.valoresRecaudosMercadeo[recaudoId];
-                this.calcularNotasPorcentajes();
-            } else if (campoId === 'apoderado') {
-                delete this.valoresRecaudosApoderado[recaudoId];
-                this.calcularPorcentajeApoderado();
-            }
+            if (campoId === 'legal')     { delete this.valoresRecaudosLegal[recaudoId];     this.calcularNotasPorcentajes(); }
+            if (campoId === 'mercadeo')  { delete this.valoresRecaudosMercadeo[recaudoId];  this.calcularNotasPorcentajes(); }
+            if (campoId === 'apoderado') { delete this.valoresRecaudosApoderado[recaudoId]; }
         },
 
-        // ========== ACTUALIZACIÓN UI ==========
-        
         actualizarVistaRecaudos: function (tipo, tipoPersona, lista) {
-            var $contenedor = this.$el.find('#contenedor-recaudos-' + tipo);
-            
+            var $cont = this.$el.find('#contenedor-recaudos-' + tipo);
             if (lista.mostrados.length === 0) {
-                $contenedor.html('<div class="alert alert-info">No hay recaudos para mostrar</div>');
+                $cont.html('<div class="alert alert-info">No hay recaudos para mostrar</div>');
             } else {
-                var html = this.crearHTMLRecaudos(lista.mostrados, tipo, lista.esPorDefecto);
-                $contenedor.html(html);
+                $cont.html(this.crearHTMLRecaudos(lista.mostrados, tipo, lista.esPorDefecto));
                 this.inicializarTooltipsRecaudos();
-                
-                // NUEVO: Restaurar selecciones previas
                 this.restaurarSeleccionesRecaudos(tipo);
             }
         },
 
-        restaurarSeleccionesRecaudos: function(campoId) {
+        restaurarSeleccionesRecaudos: function (campoId) {
             var valores = campoId === 'legal' ? this.valoresRecaudosLegal :
-                        campoId === 'mercadeo' ? this.valoresRecaudosMercadeo :
-                        this.valoresRecaudosApoderado;
-            
-            // Recorrer valores guardados y marcar los divs correspondientes
-            for (var recaudoId in valores) {
-                if (valores.hasOwnProperty(recaudoId)) {
-                    var valor = valores[recaudoId];
-                    var $opcion = this.$el.find(
-                        '[data-recaudo-id="' + recaudoId + '"]' +
-                        '[data-campo-id="' + campoId + '"]' +
-                        '[data-valor="' + valor + '"]'
-                    );
-                    $opcion.addClass('selected');
-                }
+                          campoId === 'mercadeo' ? this.valoresRecaudosMercadeo :
+                          this.valoresRecaudosApoderado;
+            for (var id in valores) {
+                if (!valores.hasOwnProperty(id)) continue;
+                this.$el.find('[data-recaudo-id="' + id + '"][data-campo-id="' + campoId + '"][data-valor="' + valores[id] + '"]')
+                    .addClass('selected');
             }
         },
 
-        actualizarDropdownRecaudos: function (campoId, recaudosDisponibles) {
+        actualizarDropdownRecaudos: function (campoId, disponibles) {
             var $select = this.$el.find('#select-agregar-' + campoId);
-            var $panel = this.$el.find('#panel-agregar-' + campoId);
-            
-            if ($select.length === 0) return;
-            
-            $select.empty();
-            $select.append('<option value="">Seleccione un elemento para agregar</option>');
-            
-            if (!recaudosDisponibles || recaudosDisponibles.length === 0) {
-                $select.append('<option value="" disabled>No hay elementos disponibles para agregar</option>');
+            var $panel  = this.$el.find('#panel-agregar-' + campoId);
+            if (!$select.length) return;
+            $select.empty().append('<option value="">Seleccione un elemento para agregar</option>');
+            if (!disponibles || disponibles.length === 0) {
+                $select.append('<option value="" disabled>No hay elementos disponibles</option>');
             } else {
-                recaudosDisponibles.forEach(function (recaudo) {
-                    $select.append('<option value="' + recaudo.id + '">' + recaudo.name + '</option>');
+                disponibles.forEach(function (r) {
+                    $select.append('<option value="' + r.id + '">' + r.name + '</option>');
                 });
             }
-            
             $select.append('<option value="crear_nuevo">+ Crear nuevo requisito</option>');
             $panel.show();
         },
 
         crearHTMLRecaudos: function (recaudos, campoId, esPorDefecto) {
             var self = this;
-            var html = '<div class="recaudos-container">';
-            html += '<table class="table table-bordered recaudos-table">';
-            html += '<thead><tr>';
-            html += '<th>Recaudo</th>';
-
-            // APODERADO: Solo 2 opciones
+            var html = '<div class="recaudos-container"><table class="table table-bordered recaudos-table"><thead><tr><th>Recaudo</th>';
             if (campoId === 'apoderado') {
                 html += '<th><i class="fas fa-circle icon-verde"></i> Lo tiene</th>';
                 html += '<th><i class="fas fa-circle icon-rojo"></i> No lo tiene</th>';
             } else {
-                // LEGAL y MERCADEO: 3 opciones
                 html += '<th><i class="fas fa-circle icon-verde"></i> Adecuado</th>';
                 html += '<th><i class="fas fa-circle icon-amarillo"></i> Revisar</th>';
                 html += '<th><i class="fas fa-circle icon-rojo"></i> Modificar/No Tiene</th>';
             }
+            html += '<th>Acción</th></tr></thead><tbody>';
 
-            html += '<th>Acción</th>';
-            html += '</tr></thead><tbody>';
-            
             recaudos.forEach(function (recaudo) {
-                var recaudoId = String(recaudo.id);
-                html += '<tr class="recaudo-row" data-recaudo-id="' + recaudoId + '">';
+                var id = String(recaudo.id);
+                html += '<tr class="recaudo-row" data-recaudo-id="' + id + '">';
                 html += '<td><div class="recaudo-texto-container">';
-                
                 if (recaudo.descripcion && recaudo.descripcion.trim() !== '') {
-                    html += '<span class="recaudo-icon-space">';
-                    html += '<i class="fas fa-info-circle info-icon" data-action="showInfoRecaudo" ';
-                    html += 'data-info="' + self.escapeHtml(recaudo.descripcion) + '" ';
-                    html += 'data-recaudo-texto="' + self.escapeHtml(recaudo.name) + '"></i>';
-                    html += '</span>';
+                    html += '<span class="recaudo-icon-space"><i class="fas fa-info-circle info-icon" data-action="showInfoRecaudo" data-info="' + self.escapeHtml(recaudo.descripcion) + '" data-recaudo-texto="' + self.escapeHtml(recaudo.name) + '"></i></span>';
                 } else {
                     html += '<span class="recaudo-icon-space"></span>';
                 }
-                
                 html += '<h4>' + self.escapeHtml(recaudo.name) + '</h4></div></td>';
-                
-                // Opciones semáforo
-                if (campoId === 'apoderado') {
-                    // Solo 2 opciones para apoderado
-                    html += '<td><div class="color-option color-verde" ';
-                    html += 'data-action="selectRecaudoSemaforo" ';
-                    html += 'data-recaudo-id="' + recaudoId + '" ';
-                    html += 'data-campo-id="' + campoId + '" ';
-                    html += 'data-valor="Adecuado"></div></td>';
-                    
-                    html += '<td><div class="color-option color-rojo" ';
-                    html += 'data-action="selectRecaudoSemaforo" ';
-                    html += 'data-recaudo-id="' + recaudoId + '" ';
-                    html += 'data-campo-id="' + campoId + '" ';
-                    html += 'data-valor="Modificar/No Tiene"></div></td>';
-                } else {
-                    // 3 opciones para legal y mercadeo
-                    html += '<td><div class="color-option color-verde" ';
-                    html += 'data-action="selectRecaudoSemaforo" ';
-                    html += 'data-recaudo-id="' + recaudoId + '" ';
-                    html += 'data-campo-id="' + campoId + '" ';
-                    html += 'data-valor="Adecuado"></div></td>';
-                    
-                    html += '<td><div class="color-option color-amarillo" ';
-                    html += 'data-action="selectRecaudoSemaforo" ';
-                    html += 'data-recaudo-id="' + recaudoId + '" ';
-                    html += 'data-campo-id="' + campoId + '" ';
-                    html += 'data-valor="Revisar"></div></td>';
-                    
-                    html += '<td><div class="color-option color-rojo" ';
-                    html += 'data-action="selectRecaudoSemaforo" ';
-                    html += 'data-recaudo-id="' + recaudoId + '" ';
-                    html += 'data-campo-id="' + campoId + '" ';
-                    html += 'data-valor="Modificar/No Tiene"></div></td>';
-                }
-                
-                html += '<td><button class="btn-eliminar-recaudo" ';
-                html += 'data-action="eliminarRecaudo" ';
-                html += 'data-recaudo-id="' + recaudoId + '" ';
-                html += 'data-campo-id="' + campoId + '">';
-                html += '<i class="fas fa-minus-circle"></i></button></td>';
+
+                var opciones = campoId === 'apoderado'
+                    ? [{ valor: 'Adecuado', clase: 'color-verde' }, { valor: 'Modificar/No Tiene', clase: 'color-rojo' }]
+                    : [{ valor: 'Adecuado', clase: 'color-verde' }, { valor: 'Revisar', clase: 'color-amarillo' }, { valor: 'Modificar/No Tiene', clase: 'color-rojo' }];
+
+                opciones.forEach(function (op) {
+                    html += '<td><div class="color-option ' + op.clase + '" data-action="selectRecaudoSemaforo" data-recaudo-id="' + id + '" data-campo-id="' + campoId + '" data-valor="' + op.valor + '"></div></td>';
+                });
+
+                html += '<td><button class="btn-eliminar-recaudo" data-action="eliminarRecaudo" data-recaudo-id="' + id + '" data-campo-id="' + campoId + '"><i class="fas fa-minus-circle"></i></button></td>';
                 html += '</tr>';
             });
-            
+
             html += '</tbody></table></div>';
             return html;
         },
 
-        // ========== PANEL "OTROS" ==========
-        
+        // ========== PANEL OTROS ==========
+
         manejarCambioSelectOtros: function (e) {
-            var $select = $(e.currentTarget);
-            var campo = $select.data('campo');
-            var valor = $select.val();
-            
+            var $s    = $(e.currentTarget);
+            var campo = $s.data('campo');
+            var valor = $s.val();
             this.actualizarEstiloSelect(campo, valor);
             this.calcularEstatusPropiedad();
         },
 
         actualizarEstiloSelect: function (campo, valor) {
-            var $select = this.$el.find('#select-' + campo);
-            
-            $select.removeClass('select-verde select-amarillo select-rojo');
-            
-            var colorClass = this.obtenerColorClassPorValor(campo, valor);
-            $select.addClass(colorClass);
+            var $s = this.$el.find('#select-' + campo);
+            $s.removeClass('select-verde select-amarillo select-rojo');
+            $s.addClass(this.obtenerColorClassPorValor(campo, valor));
         },
 
         obtenerColorClassPorValor: function (campo, valor) {
-            var verdes = [
-                'Exclusividad pura o total con contrato firmado',
-                'En rango',
-                'Ubicación atractiva',
-                'Alta demanda'
-            ];
-            
-            var amarillos = [
-                'Exclusividad interna de CENTURY con contrato firmado',
-                'Cercano al rango de precio',
-                'Ubicación medianamente atractiva',
-                'Media demanda'
-            ];
-            
-            if (verdes.includes(valor)) return 'select-verde';
+            var verdes    = ['Exclusividad pura o total con contrato firmado', 'En rango', 'Ubicación atractiva', 'Alta demanda'];
+            var amarillos = ['Exclusividad interna de CENTURY con contrato firmado', 'Cercano al rango de precio', 'Ubicación medianamente atractiva', 'Media demanda'];
+            if (verdes.includes(valor))    return 'select-verde';
             if (amarillos.includes(valor)) return 'select-amarillo';
             return 'select-rojo';
         },
 
         actualizarEstadosOtros: function () {
-            var campos = ['exclusividad', 'precio', 'ubicacion', 'demanda'];
-            campos.forEach(function(campo) {
+            ['exclusividad', 'precio', 'ubicacion', 'demanda'].forEach(function (campo) {
                 var valor = this.$el.find('#select-' + campo).val();
-                if (valor) {
-                    this.actualizarEstiloSelect(campo, valor);
-                }
+                if (valor) this.actualizarEstiloSelect(campo, valor);
             }.bind(this));
         },
 
         // ========== CÁLCULOS ==========
-        
+
         seleccionarRecaudoSemaforo: function (e) {
-            var $target = $(e.currentTarget);
-            var recaudoId = $target.data('recaudo-id');
-            var campoId = $target.data('campo-id');
-            var valor = $target.data('valor');
-            
-            this.$el.find('[data-recaudo-id="' + recaudoId + '"][data-campo-id="' + campoId + '"]')
-                .removeClass('selected');
-            $target.addClass('selected');
-            
-            if (campoId === 'legal') {
-                this.valoresRecaudosLegal[recaudoId] = valor;
-            } else if (campoId === 'mercadeo') {
-                this.valoresRecaudosMercadeo[recaudoId] = valor;
-            } else if (campoId === 'apoderado') {
-                this.valoresRecaudosApoderado[recaudoId] = valor;
-            }
-            
+            var $t        = $(e.currentTarget);
+            var recaudoId = $t.data('recaudo-id');
+            var campoId   = $t.data('campo-id');
+            var valor     = $t.data('valor');
+
+            this.$el.find('[data-recaudo-id="' + recaudoId + '"][data-campo-id="' + campoId + '"]').removeClass('selected');
+            $t.addClass('selected');
+
+            if (campoId === 'legal')     this.valoresRecaudosLegal[recaudoId]     = valor;
+            if (campoId === 'mercadeo')  this.valoresRecaudosMercadeo[recaudoId]  = valor;
+            if (campoId === 'apoderado') this.valoresRecaudosApoderado[recaudoId] = valor;
+
             this.calcularNotasPorcentajes();
         },
 
         calcularNotasPorcentajes: function () {
-            console.log('📊 === CALCULANDO NOTAS Y PORCENTAJES ===');
-            
             this.calcularPorcentajeLegal();
             this.calcularPorcentajeMercadeo();
-            this.calcularPorcentajeApoderado();
-            
-            // IMPORTANTE: Calcular estatus propiedad
             this.calcularEstatusPropiedad();
-            
-            console.log('✅ Cálculos completados');
         },
 
         calcularPorcentajeLegal: function () {
-            var lista = this.obtenerListaActual('legal');
-            var totalRecaudos = lista.mostrados.length;
-            
-            if (totalRecaudos === 0) {
-                this.$el.find('#nota-legal')
-                    .html('<span class="badge-color" style="background-color: #e74c3c;"></span>');
-                return;
-            }
-            
-            var completosRecaudos = 0;
-            lista.mostrados.forEach(function(recaudo) {
-                if (this.valoresRecaudosLegal[recaudo.id] === 'Adecuado') {
-                    completosRecaudos++;
-                }
-            }.bind(this));
-            
-            var porcentaje = Math.round((completosRecaudos / totalRecaudos) * 100);
-            
-            var color = '#e74c3c';
-            if (porcentaje >= 90) color = '#27ae60';
-            else if (porcentaje >= 80) color = '#f39c12';
-            
-            // SOLO CUADRO DE COLOR, SIN %
-            this.$el.find('#nota-legal')
-                .html('<span class="badge-color" style="background-color: ' + color + ';"></span>');
+            var lista  = this.obtenerListaActual('legal');
+            var total  = lista.mostrados.length;
+            if (total === 0) { this.$el.find('#nota-legal').html('<span class="badge-color" style="background:#e74c3c;"></span>'); return; }
+            var comp   = lista.mostrados.filter(function (r) { return this.valoresRecaudosLegal[r.id] === 'Adecuado'; }.bind(this)).length;
+            var pct    = Math.round((comp / total) * 100);
+            var color  = pct >= 90 ? '#27ae60' : (pct >= 80 ? '#f39c12' : '#e74c3c');
+            this.$el.find('#nota-legal').html('<span class="badge-color" style="background:' + color + ';"></span>');
         },
 
         calcularPorcentajeMercadeo: function () {
-            var lista = this.listasRecaudos.mercadeo;
-            var totalRecaudos = lista.mostrados.length;
-            
-            if (totalRecaudos === 0) {
-                this.$el.find('#nota-mercadeo')
-                    .html('<span class="badge-color" style="background-color: #e74c3c;"></span>');
-                return;
-            }
-            
-            var completosRecaudos = 0;
-            lista.mostrados.forEach(function(recaudo) {
-                if (this.valoresRecaudosMercadeo[recaudo.id] === 'Adecuado') {
-                    completosRecaudos++;
-                }
-            }.bind(this));
-            
-            var porcentaje = Math.round((completosRecaudos / totalRecaudos) * 100);
-            
-            var color = '#e74c3c';
-            if (porcentaje >= 90) color = '#27ae60';
-            else if (porcentaje >= 70) color = '#f39c12';
-            
-            // SOLO CUADRO DE COLOR, SIN %
-            this.$el.find('#nota-mercadeo')
-                .html('<span class="badge-color" style="background-color: ' + color + ';"></span>');
-        },
-
-        calcularPorcentajeApoderado: function () {
-            var tieneApoderado = this.$el.find('input[name="apoderado"]:checked').val() === 'true';
-            
-            if (!tieneApoderado) {
-                // SIN APODERADO: No mostrar nada o dejarlo vacío
-                this.$el.find('#nota-apoderado').html('');
-                return;
-            }
-            
-            var lista = this.listasRecaudos.apoderado;
-            var totalRecaudos = lista.mostrados.length;
-            
-            if (totalRecaudos === 0) {
-                this.$el.find('#nota-apoderado').html('');
-                return;
-            }
-            
-            var completosRecaudos = 0;
-            lista.mostrados.forEach(function(recaudo) {
-                if (this.valoresRecaudosApoderado[recaudo.id] === 'Adecuado') {
-                    completosRecaudos++;
-                }
-            }.bind(this));
-            
-            var porcentaje = Math.round((completosRecaudos / totalRecaudos) * 100);
-            
-            var color = '#95a5a6';
-            if (porcentaje >= 90) color = '#27ae60';
-            else if (porcentaje >= 70) color = '#f39c12';
-            else if (porcentaje > 0) color = '#e74c3c';
-            
-            // SOLO CUADRO DE COLOR, SIN % NI TEXTO
-            this.$el.find('#nota-apoderado')
-                .html('<span class="badge-color" style="background-color: ' + color + ';"></span>');
+            var lista  = this.listasRecaudos.mercadeo;
+            var total  = lista.mostrados.length;
+            if (total === 0) { this.$el.find('#nota-mercadeo').html('<span class="badge-color" style="background:#e74c3c;"></span>'); return; }
+            var comp   = lista.mostrados.filter(function (r) { return this.valoresRecaudosMercadeo[r.id] === 'Adecuado'; }.bind(this)).length;
+            var pct    = Math.round((comp / total) * 100);
+            var color  = pct >= 90 ? '#27ae60' : (pct >= 70 ? '#f39c12' : '#e74c3c');
+            this.$el.find('#nota-mercadeo').html('<span class="badge-color" style="background:' + color + ';"></span>');
         },
 
         calcularEstatusPropiedad: function () {
-            console.log('🎯 === CALCULANDO ESTATUS PROPIEDAD ===');
-            
-            var items = [];
-            
-            // 1. Legal (calculado)
+            // ── 1. Evaluar cada uno de los 5 indicadores ──────────────────
+
+            // Legal: % de recaudos en Adecuado
             var legalLista = this.obtenerListaActual('legal');
-            var legalTotal = legalLista.mostrados.length;
-            var legalCompletos = 0;
-            
-            legalLista.mostrados.forEach(function(recaudo) {
-                if (this.valoresRecaudosLegal[recaudo.id] === 'Adecuado') {
-                    legalCompletos++;
-                }
-            }.bind(this));
-            
-            var legalPorcentaje = legalTotal > 0 ? Math.round((legalCompletos / legalTotal) * 100) : 0;
-            var legalColor = legalPorcentaje >= 90 ? 'Verde' : (legalPorcentaje >= 80 ? 'Amarillo' : 'Rojo');
-            items.push({ nombre: 'Legal', valor: legalColor });
-            console.log('  📊 Legal:', legalPorcentaje + '%', '→', legalColor);
-            
-            // 2. Mercadeo (calculado)
-            var mercadeoLista = this.listasRecaudos.mercadeo;
-            var mercadeoTotal = mercadeoLista.mostrados.length;
-            var mercadeoCompletos = 0;
-            
-            mercadeoLista.mostrados.forEach(function(recaudo) {
-                if (this.valoresRecaudosMercadeo[recaudo.id] === 'Adecuado') {
-                    mercadeoCompletos++;
-                }
-            }.bind(this));
-            
-            var mercadeoPorcentaje = mercadeoTotal > 0 ? Math.round((mercadeoCompletos / mercadeoTotal) * 100) : 0;
-            var mercadeoColor = mercadeoPorcentaje >= 90 ? 'Verde' : (mercadeoPorcentaje >= 70 ? 'Amarillo' : 'Rojo');
-            items.push({ nombre: 'Mercadeo', valor: mercadeoColor });
-            console.log('  📊 Mercadeo:', mercadeoPorcentaje + '%', '→', mercadeoColor);
-            
-            // 3. Precio (selector)
+            var lComp = legalLista.mostrados.filter(function (r) {
+                return this.valoresRecaudosLegal[r.id] === 'Adecuado';
+            }.bind(this)).length;
+            var lPct = legalLista.mostrados.length > 0
+                ? Math.round((lComp / legalLista.mostrados.length) * 100) : 0;
+            var estLegal = lPct >= 90 ? 'Verde' : (lPct >= 70 ? 'Amarillo' : 'Rojo');
+
+            // Mercadeo: % de recaudos en Adecuado
+            var mLista = this.listasRecaudos.mercadeo;
+            var mComp = mLista.mostrados.filter(function (r) {
+                return this.valoresRecaudosMercadeo[r.id] === 'Adecuado';
+            }.bind(this)).length;
+            var mPct = mLista.mostrados.length > 0
+                ? Math.round((mComp / mLista.mostrados.length) * 100) : 0;
+            var estMercadeo = mPct >= 90 ? 'Verde' : (mPct >= 70 ? 'Amarillo' : 'Rojo');
+
+            // Precio
             var precio = this.$el.find('#select-precio').val();
-            var precioColor = 'Rojo';
-            if (precio === 'En rango') precioColor = 'Verde';
-            else if (precio === 'Cercano al rango de precio') precioColor = 'Amarillo';
-            else if (precio === 'Fuera del rango de precio') precioColor = 'Rojo';
-            items.push({ nombre: 'Precio', valor: precioColor });
-            console.log('  📊 Precio:', precio, '→', precioColor);
-            
-            // 4. Exclusividad (selector)
-            var exclusividad = this.$el.find('#select-exclusividad').val();
-            var exclusividadColor = 'Rojo';
-            if (exclusividad === 'Exclusividad pura o total con contrato firmado') exclusividadColor = 'Verde';
-            else if (exclusividad === 'Exclusividad interna de CENTURY con contrato firmado') exclusividadColor = 'Amarillo';
-            else if (exclusividad === 'Sin exclusividad') exclusividadColor = 'Rojo';
-            items.push({ nombre: 'Exclusividad', valor: exclusividadColor });
-            console.log('  📊 Exclusividad:', exclusividad, '→', exclusividadColor);
-            
-            // 5. Ubicación (selector)
-            var ubicacion = this.$el.find('#select-ubicacion').val();
-            var ubicacionColor = 'Rojo';
-            if (ubicacion === 'Ubicación atractiva') ubicacionColor = 'Verde';
-            else if (ubicacion === 'Ubicación medianamente atractiva') ubicacionColor = 'Amarillo';
-            else if (ubicacion === 'Ubicación no atractiva') ubicacionColor = 'Rojo';
-            items.push({ nombre: 'Ubicación', valor: ubicacionColor });
-            console.log('  📊 Ubicación:', ubicacion, '→', ubicacionColor);
-            
-            // APLICAR FÓRMULA
-            var verdes = 0;
-            var amarillos = 0;
-            var rojos = 0;
-            
-            items.forEach(function(item) {
-                if (item.valor === 'Verde') verdes++;
-                else if (item.valor === 'Amarillo') amarillos++;
-                else if (item.valor === 'Rojo') rojos++;
-            });
-            
-            console.log('  🔢 Conteo: Verde=' + verdes + ', Amarillo=' + amarillos + ', Rojo=' + rojos);
-            
-            var estatusFinal = 'Rojo'; // Por defecto
-            
-            // Aplicar reglas
-            if (rojos >= 2) {
-                estatusFinal = 'Rojo';
-                console.log('  ✓ Regla: 2+ rojos → Rojo');
-            } else if (rojos === 1) {
-                estatusFinal = 'Amarillo';
-                console.log('  ✓ Regla: 1 rojo → Amarillo');
-            } else if (amarillos >= 2) {
-                estatusFinal = 'Amarillo';
-                console.log('  ✓ Regla: 2+ amarillos → Amarillo');
-            } else if (amarillos === 1 && verdes === 4) {
-                estatusFinal = 'Verde';
-                console.log('  ✓ Regla: 1 amarillo + 4 verdes → Verde');
-            } else if (verdes === 5) {
-                estatusFinal = 'Verde';
-                console.log('  ✓ Regla: 5 verdes → Verde');
+            var estPrecio = precio === 'En rango'
+                ? 'Verde'
+                : (precio === 'Cercano al rango de precio' ? 'Amarillo' : 'Rojo');
+
+            // Exclusividad
+            var excl = this.$el.find('#select-exclusividad').val();
+            var estExclusiva = excl === 'Exclusividad pura o total con contrato firmado'
+                ? 'Verde'
+                : (excl === 'Exclusividad interna de CENTURY con contrato firmado' ? 'Amarillo' : 'Rojo');
+
+            // Ubicación
+            var ubic = this.$el.find('#select-ubicacion').val();
+            var estUbicacion = ubic === 'Ubicación atractiva'
+                ? 'Verde'
+                : (ubic === 'Ubicación medianamente atractiva' ? 'Amarillo' : 'Rojo');
+
+            // ── 2. Contar verdes / amarillos / rojos ───────────────────────
+            var items     = [estLegal, estMercadeo, estPrecio, estExclusiva, estUbicacion];
+            var verdes    = items.filter(function (v) { return v === 'Verde';    }).length;
+            var amarillos = items.filter(function (v) { return v === 'Amarillo'; }).length;
+            var rojos     = items.filter(function (v) { return v === 'Rojo';     }).length;
+
+            // ── 3. Aplicar escala ──────────────────────────────────────────
+            // 5V            → Verde
+            // 4V            → Verde  (independientemente de A o R restante)
+            // 3V            → Amarillo
+            // 2V + 0R / 1R  → Amarillo
+            // 2V + 2R o 3R  → Rojo
+            // 0V o 1V       → Rojo
+            var estatus;
+            if (verdes >= 4) {
+                estatus = 'Verde';
+            } else if (verdes === 3) {
+                estatus = 'Amarillo';
+            } else if (verdes === 2) {
+                estatus = rojos >= 2 ? 'Rojo' : 'Amarillo';
             } else {
-                console.log('  ⚠️ Sin regla específica, usando Rojo por defecto');
+                // 0 o 1 verde → Rojo
+                estatus = 'Rojo';
             }
-            
-            console.log('  🎯 ESTATUS FINAL:', estatusFinal);
-            
-            this.estatusPropiedad = estatusFinal;
-            return estatusFinal;
+
+            this.estatusPropiedad = estatus;
+            return estatus;
         },
 
-        obtenerEstadoDeSelect: function (campo) {
-            var valor = this.$el.find('#select-' + campo).val();
-            return this.obtenerColorClassPorValor(campo, valor) === 'select-verde' ? 'Verde' :
-                   this.obtenerColorClassPorValor(campo, valor) === 'select-amarillo' ? 'Amarillo' : 'Rojo';
+        // ========== GUARDAR ==========
+
+        guardarInventario: function () {
+            if (!this.inventarioId) { Espo.Ui.error('No hay inventario para guardar'); return; }
+
+            var estatusPropiedad = this.calcularEstatusPropiedad();
+
+            var data = {
+                inventarioId:             this.inventarioId,
+                tipoPersona:              this.$el.find('#tipoPersona').val(),
+                buyer:                    this.$el.find('#buyerPersona').val(),
+                buyerPersona:             this.$el.find('#buyerPersona').val(),
+                subBuyers:                this.obtenerSubBuyersSeleccionados(),
+                apoderado:                this.$el.find('input[name="apoderado"]:checked').val() === 'true',
+                valoresRecaudosLegal:     this.valoresRecaudosLegal,
+                valoresRecaudosMercadeo:  this.valoresRecaudosMercadeo,
+                valoresRecaudosApoderado: this.valoresRecaudosApoderado,
+                recaudosLegal:            this.obtenerRecaudosSeleccionados('legal'),
+                recaudosMercadeo:         this.obtenerRecaudosSeleccionados('mercadeo'),
+                recaudosApoderado:        this.obtenerRecaudosSeleccionados('apoderado'),
+                demanda:                  this.$el.find('#select-demanda').val(),
+                precio:                   this.$el.find('#select-precio').val(),
+                ubicacion:                this.$el.find('#select-ubicacion').val(),
+                exclusividad:             this.$el.find('#select-exclusividad').val(),
+                estatusPropiedad:         estatusPropiedad,
+            };
+
+            var $btn = this.$el.find('[data-action="guardar"]');
+            var orig = $btn.html();
+            $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Guardando...');
+
+            var self = this;
+            Espo.Ajax.postRequest('InvPropiedades/action/save', data)
+                .then(function (response) {
+                    if (response.success) {
+                        Espo.Ui.success('Inventario guardado exitosamente');
+                        setTimeout(function () { window.location.reload(); }, 1000);
+                    } else {
+                        Espo.Ui.error(response.error || 'Error al guardar');
+                        $btn.prop('disabled', false).html(orig);
+                    }
+                })
+                .catch(function () {
+                    Espo.Ui.error('Error al guardar inventario');
+                    $btn.prop('disabled', false).html(orig);
+                });
         },
 
-        // ========== OTROS MÉTODOS ==========
+        obtenerRecaudosSeleccionados: function (campoId) {
+            var lista   = this.obtenerListaActual(campoId);
+            return lista.mostrados.map(function (r) {
+                var estado = campoId === 'legal'     ? this.valoresRecaudosLegal[r.id] :
+                             campoId === 'mercadeo'  ? this.valoresRecaudosMercadeo[r.id] :
+                             this.valoresRecaudosApoderado[r.id];
+                return { recaudoId: r.id, estado: estado || 'Modificar/No Tiene' };
+            }.bind(this));
+        },
 
         mostrarModalCrearRecaudo: function (tipo) {
-            if (this.modalCrearRecaudo) {
-                this.modalCrearRecaudo.mostrar(tipo);
-            }
+            if (this.modalCrearRecaudo) this.modalCrearRecaudo.mostrar(tipo);
         },
 
         mostrarInfoRecaudoModal: function (e) {
-            var infoTexto = $(e.currentTarget).data('info');
+            var infoTexto    = $(e.currentTarget).data('info');
             var recaudoTexto = $(e.currentTarget).data('recaudo-texto');
-            
             if (!infoTexto) return;
 
             var modalId = 'infoRecaudoModal';
-            var $modal = $('#' + modalId);
-            
+            var $modal  = $('#' + modalId);
             if ($modal.length === 0) {
-                var modalHtml = 
+                $('body').append(
                     '<div class="modal fade" id="' + modalId + '" tabindex="-1" role="dialog">' +
-                    '  <div class="modal-dialog modal-lg">' +
-                    '    <div class="modal-content">' +
-                    '      <div class="modal-header">' +
-                    '        <button type="button" class="close" data-dismiss="modal">&times;</button>' +
-                    '        <h4 class="modal-title"><i class="fas fa-info-circle"></i> Información del Recaudo</h4>' +
-                    '      </div>' +
-                    '      <div class="modal-body">' +
-                    '        <h5>Recaudo:</h5><p class="info-recaudo-texto"></p>' +
-                    '        <h5>Descripción:</h5><div class="info-contenido-texto"></div>' +
-                    '      </div>' +
-                    '      <div class="modal-footer">' +
-                    '        <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>' +
-                    '      </div>' +
-                    '    </div>' +
-                    '  </div>' +
-                    '</div>';
-                
-                $('body').append(modalHtml);
+                    '<div class="modal-dialog modal-lg"><div class="modal-content">' +
+                    '<div class="modal-header"><button type="button" class="close" data-dismiss="modal">&times;</button>' +
+                    '<h4 class="modal-title"><i class="fas fa-info-circle"></i> Información del Recaudo</h4></div>' +
+                    '<div class="modal-body"><h5>Recaudo:</h5><p class="info-recaudo-texto"></p>' +
+                    '<h5>Descripción:</h5><div class="info-contenido-texto"></div></div>' +
+                    '<div class="modal-footer"><button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button></div>' +
+                    '</div></div></div>'
+                );
                 $modal = $('#' + modalId);
             }
-            
             $modal.find('.info-recaudo-texto').text(recaudoTexto);
             $modal.find('.info-contenido-texto').html(infoTexto.replace(/\n/g, '<br>'));
             $modal.modal('show');
         },
 
         inicializarTooltipsRecaudos: function () {
-            this.$el.find('[data-toggle="tooltip"]').tooltip({
-                placement: 'top',
-                html: true,
-                container: 'body',
-                trigger: 'hover'
-            });
-        },
-
-        guardarInventario: function () {
-            if (!this.inventarioId) {
-                Espo.Ui.error('No hay inventario para guardar');
-                return;
-            }
-            
-            var tipoPersona = this.$el.find('#tipoPersona').val();
-            var tieneApoderado = this.$el.find('input[name="apoderado"]:checked').val() === 'true';
-            
-            // Calcular estatus antes de guardar
-            var estatusPropiedad = this.calcularEstatusPropiedad();
-            
-            var data = {
-                inventarioId: this.inventarioId,
-                tipoPersona: tipoPersona,
-                buyer: this.$el.find('#buyerPersona').val(),
-                buyerPersona: this.$el.find('#buyerPersona').val(),
-                subBuyers: this.obtenerSubBuyersSeleccionados(),
-                apoderado: tieneApoderado,
-                valoresRecaudosLegal: this.valoresRecaudosLegal,
-                valoresRecaudosMercadeo: this.valoresRecaudosMercadeo,
-                valoresRecaudosApoderado: this.valoresRecaudosApoderado,
-                recaudosLegal: this.obtenerRecaudosSeleccionados('legal'),
-                recaudosMercadeo: this.obtenerRecaudosSeleccionados('mercadeo'),
-                recaudosApoderado: this.obtenerRecaudosSeleccionados('apoderado'),
-                demanda: this.$el.find('#select-demanda').val(),
-                precio: this.$el.find('#select-precio').val(),
-                ubicacion: this.$el.find('#select-ubicacion').val(),
-                exclusividad: this.$el.find('#select-exclusividad').val(),
-                estatusPropiedad: estatusPropiedad // IMPORTANTE: Enviar el calculado
-            };
-            
-            console.log('📤 Guardando con estatusPropiedad:', estatusPropiedad);
-            console.log('📤 Datos completos:', data);
-            
-            var $btnGuardar = this.$el.find('[data-action="guardar"]');
-            var textoOriginal = $btnGuardar.html();
-            $btnGuardar.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Guardando...');
-            
-            var self = this;
-            
-            Espo.Ajax.postRequest('InvPropiedades/action/save', data)
-                .then(function (response) {
-                    if (response.success) {
-                        Espo.Ui.success('Inventario guardado exitosamente');
-                        
-                        // CAMBIO: Recargar en lugar de redirigir
-                        setTimeout(function () {
-                            console.log('🔄 Recargando página...');
-                            window.location.reload();
-                        }, 1000);
-                    } else {
-                        Espo.Ui.error(response.error || 'Error al guardar');
-                        $btnGuardar.prop('disabled', false).html(textoOriginal);
-                    }
-                })
-                .catch(function (error) {
-                    console.error('Error en Ajax save:', error);
-                    Espo.Ui.error('Error al guardar inventario');
-                    $btnGuardar.prop('disabled', false).html(textoOriginal);
-                });
-        },
-
-        obtenerRecaudosSeleccionados: function (campoId) {
-            var lista = this.obtenerListaActual(campoId);
-            var recaudos = [];
-            
-            lista.mostrados.forEach(function(recaudo) {
-                var estado = campoId === 'legal' ? this.valoresRecaudosLegal[recaudo.id] :
-                            campoId === 'mercadeo' ? this.valoresRecaudosMercadeo[recaudo.id] :
-                            this.valoresRecaudosApoderado[recaudo.id];
-                
-                recaudos.push({
-                    recaudoId: recaudo.id,
-                    estado: estado || 'Modificar/No Tiene'
-                });
-            }.bind(this));
-            
-            console.log('📋 Recaudos ' + campoId + ':', recaudos);
-            
-            return recaudos;
+            this.$el.find('[data-toggle="tooltip"]').tooltip({ placement: 'top', html: true, container: 'body', trigger: 'hover' });
         },
 
         escapeHtml: function (text) {
             if (!text) return '';
-            var map = {
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#039;'
-            };
-            return text.toString().replace(/[&<>"']/g, function(m) { return map[m]; });
+            return text.toString().replace(/[&<>"']/g, function (m) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+            });
         },
 
-        data: function () {
-            return {};
-        }
+        data: function () { return {}; }
     });
 });
