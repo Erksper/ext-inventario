@@ -10,7 +10,10 @@ define('inventario:views/modules/permisos', [], function () {
             esCoordinador:    false,
             esAsesor:         false,
             claUsuario:       null,
+            claNombre:        null,  // Asegurar que existe
             oficinaUsuario:   null,
+            oficinaNombre:    null,  // Asegurar que existe
+            userName:         null,
             usuarioId:        null,
             permisosListo:    false
         };
@@ -27,15 +30,8 @@ define('inventario:views/modules/permisos', [], function () {
                         var info = response.data;
 
                         var esAdminType = info.userType === 'admin';
-
-                        var tieneRolesGestion =
-                            info.esGerente ||
-                            info.esCoordinador ||
-                            info.esDirector ||
-                            info.esCasaNacional;
-
-                        var esAsesorPuro =
-                            info.userType === 'regular' && !tieneRolesGestion;
+                        var tieneRolesGestion = info.esGerente || info.esCoordinador || info.esDirector || info.esCasaNacional;
+                        var esAsesorPuro = info.userType === 'regular' && !tieneRolesGestion;
 
                         self.permisos = {
                             esAdministrativo: esAdminType,
@@ -45,11 +41,15 @@ define('inventario:views/modules/permisos', [], function () {
                             esCoordinador:    info.esCoordinador   || false,
                             esAsesor:         esAsesorPuro,
                             claUsuario:       info.claUsuario      || null,
+                            claNombre:        info.claNombre       || null,  // NUEVO
                             oficinaUsuario:   info.oficinaUsuario  || null,
+                            oficinaNombre:    info.oficinaNombre   || null,  // NUEVO
+                            userName:         info.userName        || null,
                             usuarioId:        info.usuarioId       || user.id,
                             permisosListo:    true
                         };
 
+                        console.log('PermisosManager - datos completos:', self.permisos); // Log para debug
                         resolve(self.permisos);
                     } else {
                         reject(response.error || 'Error al cargar permisos');

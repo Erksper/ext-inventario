@@ -21,7 +21,7 @@ define('inventario:views/list', [
                 estatus: null
             };
 
-            this.propiedadesPagina   = [];   // registros de la página actual
+            this.propiedadesPagina   = [];
             this.inventarioData      = {};
             this.paginacion          = { pagina: 1, porPagina: 25, total: 0, totalPaginas: 0 };
             this.cargandoPagina      = false;
@@ -32,7 +32,11 @@ define('inventario:views/list', [
         cargarPermisos: function () {
             this.permisosManager.cargarPermisosUsuario()
                 .then(function (permisos) {
+                    // Los permisos YA incluyen claNombre y oficinaNombre desde el backend
                     this.permisos = permisos;
+                    
+                    console.log('Permisos recibidos del backend:', this.permisos);
+                    
                     this.cargarFiltros();
                     this.cargarPropiedadesIniciales();
                 }.bind(this))
@@ -48,18 +52,28 @@ define('inventario:views/list', [
             this.aplicarVisibilidadFiltros();
         },
 
+        // ═══════════════════════════════════════════════════════════
+        // VISIBILIDAD DE FILTROS SEGÚN ROL (ACTUALIZADO)
+        // ═══════════════════════════════════════════════════════════
         aplicarVisibilidadFiltros: function () {
             if (!this.permisos) return;
             var p = this.permisos;
 
-            if (p.esAsesor) {
-                this.$el.find('#filtro-cla-group, #filtro-oficina-group, #filtro-asesor-group').hide();
-            } else if (p.esGerente || p.esDirector || p.esCoordinador) {
-                this.$el.find('#filtro-cla-group, #filtro-oficina-group').hide();
-                this.$el.find('#filtro-asesor-group').show();
-            } else {
+            // Casa Nacional: ve todos los filtros
+            if (p.esCasaNacional) {
                 this.$el.find('#filtro-cla-group, #filtro-oficina-group, #filtro-asesor-group').show();
+                return;
             }
+
+            // Director/Gerente: ocultar CLA y Oficina (ya están bloqueados), mostrar Asesor
+            if (p.esGerente || p.esDirector || p.esCoordinador) {
+                this.$el.find('#filtro-cla-group, #filtro-oficina-group').show(); // Se muestran pero disabled
+                this.$el.find('#filtro-asesor-group').show();
+                return;
+            }
+
+            // Asesor (y otros): mostrar todos pero disabled, excepto fechas y estatus
+            this.$el.find('#filtro-cla-group, #filtro-oficina-group, #filtro-asesor-group').show();
         },
 
         setupEventListeners: function () {
@@ -88,18 +102,80 @@ define('inventario:views/list', [
         cargarFiltros: function () {
             var p = this.permisos;
 
-            if (p.esAsesor) {
-                this.filtros.asesor = p.usuarioId;
+            if (!p) return;
+
+            console.log('cargarFiltros - permisos:', p);
+
+            // Si es Casa Nacional, cargar todos los CLAs normalmente
+            if (p.esCasaNacional) {
+                this.cargarTodosCLAs();
                 return;
             }
 
+            // Si es Director/Gerente
             if (p.esGerente || p.esDirector || p.esCoordinador) {
                 this.filtros.oficina = p.oficinaUsuario;
-                if (p.oficinaUsuario) this.cargarAsesoresPorOficina(p.oficinaUsuario);
+                
+                // Mostrar CLA bloqueado si tiene uno
+                if (p.claUsuario) {
+                    var $cla = this.$el.find('#filtro-cla');
+                    $cla.empty().append('<option value="' + p.claUsuario + '">' + (p.claNombre || 'CLA ' + p.claUsuario) + '</option>');
+                    $cla.prop('disabled', true);
+                    console.log('Mostrando CLA:', p.claNombre);
+                } else {
+                    var $cla = this.$el.find('#filtro-cla');
+                    $cla.empty().append('<option value="">Sin CLA asignado</option>');
+                    $cla.prop('disabled', true);
+                }
+                
+                // Mostrar Oficina bloqueada
+                if (p.oficinaUsuario) {
+                    var $oficina = this.$el.find('#filtro-oficina');
+                    $oficina.empty().append('<option value="' + p.oficinaUsuario + '">' + (p.oficinaNombre || 'Oficina ' + p.oficinaUsuario) + '</option>');
+                    $oficina.prop('disabled', true);
+                    console.log('Mostrando Oficina:', p.oficinaNombre);
+                    
+                    // Cargar asesores de esa oficina
+                    this.cargarAsesoresPorOficina(p.oficinaUsuario);
+                } else {
+                    var $oficina = this.$el.find('#filtro-oficina');
+                    $oficina.empty().append('<option value="">Sin oficina asignada</option>');
+                    $oficina.prop('disabled', true);
+                }
                 return;
             }
 
-            this.cargarTodosCLAs();
+            // Si es Asesor (o tratado como asesor)
+            if (p.esAsesor) {
+                this.filtros.asesor = p.usuarioId;
+                
+                // Mostrar CLA bloqueado si tiene uno
+                if (p.claUsuario) {
+                    var $cla = this.$el.find('#filtro-cla');
+                    $cla.empty().append('<option value="' + p.claUsuario + '">' + (p.claNombre || 'CLA ' + p.claUsuario) + '</option>');
+                    $cla.prop('disabled', true);
+                } else {
+                    var $cla = this.$el.find('#filtro-cla');
+                    $cla.empty().append('<option value="">Sin CLA asignado</option>');
+                    $cla.prop('disabled', true);
+                }
+                
+                // Mostrar Oficina bloqueada
+                if (p.oficinaUsuario) {
+                    var $oficina = this.$el.find('#filtro-oficina');
+                    $oficina.empty().append('<option value="' + p.oficinaUsuario + '">' + (p.oficinaNombre || 'Oficina ' + p.oficinaUsuario) + '</option>');
+                    $oficina.prop('disabled', true);
+                } else {
+                    var $oficina = this.$el.find('#filtro-oficina');
+                    $oficina.empty().append('<option value="">Sin oficina asignada</option>');
+                    $oficina.prop('disabled', true);
+                }
+                
+                // Mostrar Asesor bloqueado (él mismo)
+                var $asesor = this.$el.find('#filtro-asesor');
+                $asesor.empty().append('<option value="' + p.usuarioId + '">' + (p.userName || 'Usuario ' + p.usuarioId) + '</option>');
+                $asesor.prop('disabled', true);
+            }
         },
 
         cargarTodosCLAs: function () {
@@ -193,7 +269,10 @@ define('inventario:views/list', [
         // ========== CARGA DE PROPIEDADES ==========
 
         cargarPropiedadesIniciales: function () {
-            var params = { pagina: 1 };
+            var params = { 
+                pagina: 1,
+                userId: this.getUser().id  // Enviar ID del usuario actual para filtros de rol
+            };
             var p = this.permisos;
 
             if (!p) {
@@ -201,10 +280,17 @@ define('inventario:views/list', [
                 return;
             }
 
-            if (p.esAsesor) {
-                params.asesorId = p.usuarioId;
-            } else if (p.esGerente || p.esDirector || p.esCoordinador) {
+            // Casa Nacional: no añadir filtros automáticos
+            if (p.esCasaNacional) {
+                // No añadir nada
+            }
+            // Director/Gerente: filtrar por su oficina
+            else if (p.esGerente || p.esDirector || p.esCoordinador) {
                 if (p.oficinaUsuario) params.oficinaId = p.oficinaUsuario;
+            }
+            // Asesor: filtrar por su ID
+            else if (p.esAsesor) {
+                params.asesorId = p.usuarioId;
             }
 
             this.fetchPropiedades(params);
@@ -215,7 +301,7 @@ define('inventario:views/list', [
             var cla     = this.$el.find('#filtro-cla').val()     || null;
             var oficina = this.$el.find('#filtro-oficina').val() || null;
             var asesor  = this.$el.find('#filtro-asesor').val()  || null;
-            var estatus = this.$el.find('#filtro-estatus').val() || null; // <-- NUEVO
+            var estatus = this.$el.find('#filtro-estatus').val() || null;
 
             this.filtros = {
                 cla:       cla,
@@ -223,35 +309,21 @@ define('inventario:views/list', [
                 asesor:    asesor,
                 fechaDesde: this.$el.find('#filtro-fecha-desde').val() || null,
                 fechaHasta: this.$el.find('#filtro-fecha-hasta').val() || null,
-                estatus:   estatus  // <-- NUEVO
+                estatus:   estatus
             };
 
-            // Respetar restricciones de rol
-            var p = this.permisos;
-            if (p) {
-                if (p.esAsesor) {
-                    this.filtros.asesor  = p.usuarioId;
-                    this.filtros.cla     = null;
-                    this.filtros.oficina = null;
-                } else if (p.esGerente || p.esDirector || p.esCoordinador) {
-                    this.filtros.oficina = p.oficinaUsuario;
-                    this.filtros.cla     = null;
-                }
-            }
-
+            // Los filtros manuales respetan los roles automáticos en el backend
             this.paginacion.pagina = 1;
             this.fetchConFiltrosActuales();
         },
 
         limpiarFiltros: function () {
-            this.$el.find('#filtro-cla').val('');
-            this.$el.find('#filtro-oficina').val('').prop('disabled', true)
-                .html('<option value="">Seleccione un CLA primero</option>');
-            this.$el.find('#filtro-asesor').val('').prop('disabled', true)
-                .html('<option value="">Todos los asesores</option>');
             this.$el.find('#filtro-fecha-desde').val('');
             this.$el.find('#filtro-fecha-hasta').val('');
-            this.$el.find('#filtro-estatus').val(''); // <-- NUEVO
+            this.$el.find('#filtro-estatus').val('');
+
+            // Restaurar valores bloqueados según rol
+            this.cargarFiltros();
 
             this.filtros = { 
                 cla: null, 
@@ -259,20 +331,23 @@ define('inventario:views/list', [
                 asesor: null, 
                 fechaDesde: null, 
                 fechaHasta: null,
-                estatus: null  // <-- NUEVO
+                estatus: null
             };
             this.paginacion.pagina = 1;
             this.cargarPropiedadesIniciales();
         },
 
         fetchConFiltrosActuales: function (pagina) {
-            var params = { pagina: pagina || this.paginacion.pagina };
+            var params = { 
+                pagina: pagina || this.paginacion.pagina,
+                userId: this.getUser().id  // Siempre enviar userId para filtros de rol
+            };
             if (this.filtros.cla)        params.claId      = this.filtros.cla;
             if (this.filtros.oficina)    params.oficinaId  = this.filtros.oficina;
             if (this.filtros.asesor)     params.asesorId   = this.filtros.asesor;
             if (this.filtros.fechaDesde) params.fechaDesde = this.filtros.fechaDesde;
             if (this.filtros.fechaHasta) params.fechaHasta = this.filtros.fechaHasta;
-            if (this.filtros.estatus)    params.estatus    = this.filtros.estatus; // <-- NUEVO
+            if (this.filtros.estatus)    params.estatus    = this.filtros.estatus;
             this.fetchPropiedades(params);
         },
 
@@ -339,11 +414,9 @@ define('inventario:views/list', [
         calcularDias: function (fechaAlta) {
             if (!fechaAlta) return '-';
             
-            // Crear fechas sin la parte de hora para comparar solo días
             var hoy = new Date();
             var fecha = new Date(fechaAlta);
             
-            // Resetear horas a 00:00:00 para comparar solo fechas
             hoy.setHours(0, 0, 0, 0);
             fecha.setHours(0, 0, 0, 0);
             
@@ -353,21 +426,14 @@ define('inventario:views/list', [
             return diffDays + ' días';
         },
 
-        /**
-         * NUEVA FUNCIÓN: Determina el color según los días en mercado
-         * Verde: < 90 días
-         * Amarillo: 91 - 150 días
-         * Rojo: > 150 días
-         */
         colorDias: function (diasTexto) {
-            // Extrae el número de días del string (ej: "120 días")
             var match = diasTexto.match(/(\d+)/);
-            if (!match) return '#95a5a6'; // Gris por defecto si no hay número
+            if (!match) return '#95a5a6';
             var dias = parseInt(match[0], 10);
             
-            if (dias < 90) return '#27ae60'; // Verde
-            if (dias <= 150) return '#f39c12'; // Amarillo
-            return '#e74c3c'; // Rojo
+            if (dias < 90) return '#27ae60';
+            if (dias <= 150) return '#f39c12';
+            return '#e74c3c';
         },
 
         colorEstatus: function (e) {
@@ -383,7 +449,6 @@ define('inventario:views/list', [
             var container = this.$el.find('#inventario-container');
             var pag       = this.paginacion;
 
-            // Actualizar contador
             var inicio = pag.total === 0 ? 0 : (pag.pagina - 1) * pag.porPagina + 1;
             var fin    = Math.min(pag.pagina * pag.porPagina, pag.total);
             this.$el.find('#total-propiedades-mostradas')
@@ -394,19 +459,18 @@ define('inventario:views/list', [
                     '<div class="no-data-card">' +
                     '<div class="no-data-icon"><i class="fas fa-home"></i></div>' +
                     '<h3 class="no-data-title">No hay propiedades</h3>' +
-                    '<p class="no-data-text">No se encontraron propiedades "En promoción" con los filtros actuales</p>' +
+                    '<p class="no-data-text">No se encontraron propiedades con los filtros actuales</p>' +
                     '</div>'
                 );
                 return;
             }
 
-            // Calcular el número de inicio para la numeración de líneas
             var inicioPagina = (pag.pagina - 1) * pag.porPagina;
 
             var html = '<div class="tabla-wrapper">';
             html += '<table class="tabla-propiedades">';
             html += '<thead><tr>';
-            html += '<th style="width:50px;text-align:center;">N°</th>'; // NUEVA COLUMNA
+            html += '<th style="width:50px;text-align:center;">N°</th>';
             html += '<th style="width:90px;">Días</th>';
             html += '<th style="min-width:180px;">Dirección</th>';
             html += '<th style="min-width:140px;">Asesor</th>';
@@ -419,14 +483,14 @@ define('inventario:views/list', [
             html += '</tr></thead><tbody>';
 
             this.propiedadesPagina.forEach(function (propiedad, index) {
-                var numeroLinea = inicioPagina + index + 1; // Número de línea secuencial
+                var numeroLinea = inicioPagina + index + 1;
                 var inv        = self.inventarioData[propiedad.id] || null;
                 var estatus    = inv ? (inv.estatusPropiedad || 'Sin calcular') : 'Sin calcular';
                 var demanda    = inv ? (inv.demanda || 'Sin definir') : 'Sin definir';
                 var cEstatus   = self.colorEstatus(estatus);
                 var cDemanda   = self.colorDemanda(demanda);
                 var dias       = self.calcularDias(propiedad.fechaAlta);
-                var colorDias  = self.colorDias(dias); // Color según días
+                var colorDias  = self.colorDias(dias);
                 var partes     = [propiedad.calle, propiedad.numero, propiedad.urbanizacion].filter(Boolean);
                 var direccion  = partes.join(' ') || '-';
                 var asesor     = propiedad.asesorNombre || '-';
@@ -434,8 +498,7 @@ define('inventario:views/list', [
                 var apoCellId  = 'apo-' + propiedad.id;
 
                 html += '<tr data-id="' + propiedad.id + '">';
-                html += '<td style="text-align:center;font-weight:600;">' + numeroLinea + '</td>'; // NUEVA CELDA
-                // Celda de días con color de fondo
+                html += '<td style="text-align:center;font-weight:600;">' + numeroLinea + '</td>';
                 html += '<td style="text-align:center;font-weight:600;color:white;background:' + colorDias + ';border-radius:4px;">' + dias + '</td>';
                 html += '<td title="' + self.esc(direccion) + '" class="td-ellipsis">' + self.esc(direccion) + '</td>';
                 html += '<td title="' + self.esc(asesor) + '" class="td-ellipsis">' + self.esc(asesorShort) + '</td>';
@@ -460,13 +523,10 @@ define('inventario:views/list', [
             });
 
             html += '</tbody></table></div>';
-
-            // Paginación
             html += this.renderPaginacion();
 
             container.html(html);
 
-            // Cargar apoderados async
             this.propiedadesPagina.forEach(function (propiedad) {
                 var inv = self.inventarioData[propiedad.id];
                 if (inv && inv.apoderado && inv.id) {
@@ -474,7 +534,6 @@ define('inventario:views/list', [
                 }
             });
 
-            // Eventos
             container.find('tr[data-id]').on('click', function (e) {
                 if (!$(e.target).closest('button').length) {
                     self.verDetalle($(this).data('id'));
@@ -498,8 +557,7 @@ define('inventario:views/list', [
             var total   = pag.totalPaginas;
             var pages   = [];
 
-            // Siempre mostrar primera y última, con elipsis si hay hueco
-            var rango = 2; // páginas a cada lado de la actual
+            var rango = 2;
             var inicio = Math.max(2, actual - rango);
             var fin    = Math.min(total - 1, actual + rango);
 
@@ -513,7 +571,6 @@ define('inventario:views/list', [
             html += '<div class="paginacion-info">Página ' + actual + ' de ' + total + '</div>';
             html += '<div class="paginacion-controles">';
 
-            // Anterior
             html += '<button class="pag-btn pag-nav' + (actual <= 1 ? ' disabled' : '') + '" data-pagina="' + (actual - 1) + '"' + (actual <= 1 ? ' disabled' : '') + '>';
             html += '<i class="fas fa-chevron-left"></i></button>';
 
@@ -525,7 +582,6 @@ define('inventario:views/list', [
                 }
             });
 
-            // Siguiente
             html += '<button class="pag-btn pag-nav' + (actual >= total ? ' disabled' : '') + '" data-pagina="' + (actual + 1) + '"' + (actual >= total ? ' disabled' : '') + '>';
             html += '<i class="fas fa-chevron-right"></i></button>';
 
