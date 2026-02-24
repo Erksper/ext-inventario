@@ -40,6 +40,17 @@
                 </div>
 
                 <div class="filter-group">
+                    <label>Estatus</label>
+                    <select id="filtro-estatus" class="form-control inv-select">
+                        <option value="">Todos los estatus</option>
+                        <option value="Verde">Verde</option>
+                        <option value="Amarillo">Amarillo</option>
+                        <option value="Rojo">Rojo</option>
+                        <option value="Sin calcular">Sin Calcular</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
                     <label>Desde</label>
                     <input type="date" id="filtro-fecha-desde" class="form-control inv-select">
                 </div>

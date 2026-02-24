@@ -223,11 +223,12 @@ class InvLista extends Record
         $asesorId   = $request->getQueryParam('asesorId');
         $fechaDesde = $request->getQueryParam('fechaDesde');
         $fechaHasta = $request->getQueryParam('fechaHasta');
+        $estatus    = $request->getQueryParam('estatus');
         $pagina     = max(1, (int)($request->getQueryParam('pagina') ?? 1));
         $porPagina  = 25;
         $offset     = ($pagina - 1) * $porPagina;
 
-        $log->info("[InvLista::getPropiedades] START pagina={$pagina} claId={$claId} oficinaId={$oficinaId} asesorId={$asesorId}");
+        $log->info("[InvLista::getPropiedades] START pagina={$pagina} claId={$claId} oficinaId={$oficinaId} asesorId={$asesorId} estatus={$estatus}");
 
         $em  = $this->getContainer()->get('entityManager');
         $pdo = $em->getPDO();
@@ -253,6 +254,29 @@ class InvLista extends Record
                 $params['status'] = $statusTarget;
             }
 
+            // ═══════════════════════════════════════════════════════════
+            // FILTRO POR ESTATUS - VERSIÓN CORREGIDA
+            // ═══════════════════════════════════════════════════════════
+            if ($estatus) {
+                if ($estatus === 'Sin calcular') {
+                    // Mostrar propiedades que NO tienen inventario
+                    $where .= " AND NOT EXISTS (
+                        SELECT 1 FROM inv_propiedades inv
+                        WHERE inv.id_propiedad_id = p.id
+                        AND inv.deleted = 0
+                    )";
+                } else {
+                    // Mostrar propiedades que SÍ tienen inventario con ese estatus
+                    $where .= " AND EXISTS (
+                        SELECT 1 FROM inv_propiedades inv
+                        WHERE inv.id_propiedad_id = p.id
+                        AND inv.deleted = 0
+                        AND inv.estatus_propiedad = :estatus
+                    )";
+                    $params['estatus'] = $estatus;
+                }
+            }
+
             if ($asesorId) {
                 $where .= " AND p.id_asesor_exclusiva_id = :asesorId";
                 $params['asesorId'] = $asesorId;
@@ -273,9 +297,9 @@ class InvLista extends Record
                 $where .= " AND EXISTS (
                     SELECT 1 FROM entity_team et_cla
                     WHERE et_cla.entity_id = p.id
-                      AND et_cla.team_id = :claId
-                      AND et_cla.entity_type = 'Propiedades'
-                      AND et_cla.deleted = 0
+                    AND et_cla.team_id = :claId
+                    AND et_cla.entity_type = 'Propiedades'
+                    AND et_cla.deleted = 0
                 )";
                 $params['claId'] = $claId;
             }
@@ -284,9 +308,9 @@ class InvLista extends Record
                 $where .= " AND EXISTS (
                     SELECT 1 FROM entity_team et_of
                     WHERE et_of.entity_id = p.id
-                      AND et_of.team_id = :oficinaId
-                      AND et_of.entity_type = 'Propiedades'
-                      AND et_of.deleted = 0
+                    AND et_of.team_id = :oficinaId
+                    AND et_of.entity_type = 'Propiedades'
+                    AND et_of.deleted = 0
                 )";
                 $params['oficinaId'] = $oficinaId;
             }
@@ -305,10 +329,10 @@ class InvLista extends Record
             // ── 5. Obtener IDs de la página con LIMIT/OFFSET ───────────────
             $stmtIds = $pdo->prepare(
                 "SELECT DISTINCT p.id, p.fecha_alta
-                 FROM propiedades p
-                 WHERE {$where}
-                 ORDER BY p.fecha_alta DESC
-                 LIMIT :limit OFFSET :offset"
+                FROM propiedades p
+                WHERE {$where}
+                ORDER BY p.fecha_alta DESC
+                LIMIT :limit OFFSET :offset"
             );
             foreach ($params as $k => $v) {
                 $stmtIds->bindValue(':' . $k, $v);

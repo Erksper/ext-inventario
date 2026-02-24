@@ -17,7 +17,8 @@ define('inventario:views/list', [
                 oficina: null,
                 asesor: null,
                 fechaDesde: null,
-                fechaHasta: null
+                fechaHasta: null,
+                estatus: null
             };
 
             this.propiedadesPagina   = [];   // registros de la página actual
@@ -214,6 +215,7 @@ define('inventario:views/list', [
             var cla     = this.$el.find('#filtro-cla').val()     || null;
             var oficina = this.$el.find('#filtro-oficina').val() || null;
             var asesor  = this.$el.find('#filtro-asesor').val()  || null;
+            var estatus = this.$el.find('#filtro-estatus').val() || null; // <-- NUEVO
 
             this.filtros = {
                 cla:       cla,
@@ -221,6 +223,7 @@ define('inventario:views/list', [
                 asesor:    asesor,
                 fechaDesde: this.$el.find('#filtro-fecha-desde').val() || null,
                 fechaHasta: this.$el.find('#filtro-fecha-hasta').val() || null,
+                estatus:   estatus  // <-- NUEVO
             };
 
             // Respetar restricciones de rol
@@ -248,8 +251,16 @@ define('inventario:views/list', [
                 .html('<option value="">Todos los asesores</option>');
             this.$el.find('#filtro-fecha-desde').val('');
             this.$el.find('#filtro-fecha-hasta').val('');
+            this.$el.find('#filtro-estatus').val(''); // <-- NUEVO
 
-            this.filtros = { cla: null, oficina: null, asesor: null, fechaDesde: null, fechaHasta: null };
+            this.filtros = { 
+                cla: null, 
+                oficina: null, 
+                asesor: null, 
+                fechaDesde: null, 
+                fechaHasta: null,
+                estatus: null  // <-- NUEVO
+            };
             this.paginacion.pagina = 1;
             this.cargarPropiedadesIniciales();
         },
@@ -261,6 +272,7 @@ define('inventario:views/list', [
             if (this.filtros.asesor)     params.asesorId   = this.filtros.asesor;
             if (this.filtros.fechaDesde) params.fechaDesde = this.filtros.fechaDesde;
             if (this.filtros.fechaHasta) params.fechaHasta = this.filtros.fechaHasta;
+            if (this.filtros.estatus)    params.estatus    = this.filtros.estatus; // <-- NUEVO
             this.fetchPropiedades(params);
         },
 
