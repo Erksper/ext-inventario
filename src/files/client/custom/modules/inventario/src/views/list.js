@@ -12,13 +12,16 @@ define('inventario:views/list', [
 
             this.permisosManager = new PermisosManager(this);
 
+            // Cargar filtros desde URL
+            this.filtrosDesdeUrl = this.parseQueryParams();
+
             this.filtros = {
-                cla: null,
-                oficina: null,
-                asesor: null,
-                fechaDesde: null,
-                fechaHasta: null,
-                estatus: null
+                cla: this.filtrosDesdeUrl.cla || null,
+                oficina: this.filtrosDesdeUrl.oficina || null,
+                asesor: this.filtrosDesdeUrl.asesor || null,
+                fechaDesde: this.filtrosDesdeUrl.fechaDesde || null,
+                fechaHasta: this.filtrosDesdeUrl.fechaHasta || null,
+                estatus: this.filtrosDesdeUrl.estatus || null
             };
 
             this.propiedadesPagina   = [];
@@ -29,15 +32,74 @@ define('inventario:views/list', [
             this.cargarPermisos();
         },
 
+        // Parsear query parameters de la URL
+        parseQueryParams: function() {
+            var hash = window.location.hash;
+            var filtros = {
+                cla: null,
+                oficina: null,
+                asesor: null,
+                fechaDesde: null,
+                fechaHasta: null,
+                estatus: null,
+                pagina: 1
+            };
+            
+            if (hash && hash.includes('?')) {
+                var queryString = hash.split('?')[1];
+                var params = new URLSearchParams(queryString);
+                
+                filtros.cla = params.get('cla');
+                filtros.oficina = params.get('oficina');
+                filtros.asesor = params.get('asesor');
+                filtros.fechaDesde = params.get('fechaDesde');
+                filtros.fechaHasta = params.get('fechaHasta');
+                filtros.estatus = params.get('estatus');
+                filtros.pagina = params.get('pagina') ? parseInt(params.get('pagina'), 10) : 1;
+            }
+            
+            return filtros;
+        },
+
+        // Actualizar URL con filtros actuales
+        actualizarUrlConFiltros: function() {
+            var queryParams = [];
+            
+            if (this.filtros.cla) queryParams.push('cla=' + encodeURIComponent(this.filtros.cla));
+            if (this.filtros.oficina) queryParams.push('oficina=' + encodeURIComponent(this.filtros.oficina));
+            if (this.filtros.asesor) queryParams.push('asesor=' + encodeURIComponent(this.filtros.asesor));
+            if (this.filtros.fechaDesde) queryParams.push('fechaDesde=' + encodeURIComponent(this.filtros.fechaDesde));
+            if (this.filtros.fechaHasta) queryParams.push('fechaHasta=' + encodeURIComponent(this.filtros.fechaHasta));
+            if (this.filtros.estatus) queryParams.push('estatus=' + encodeURIComponent(this.filtros.estatus));
+            if (this.paginacion.pagina > 1) queryParams.push('pagina=' + this.paginacion.pagina);
+            
+            var queryString = queryParams.length > 0 ? '?' + queryParams.join('&') : '';
+            var nuevaUrl = '#InvLista' + queryString;
+            
+            // Actualizar URL sin recargar la página
+            this.getRouter().navigate(nuevaUrl, { trigger: false });
+        },
+
         cargarPermisos: function () {
             this.permisosManager.cargarPermisosUsuario()
                 .then(function (permisos) {
-                    // Los permisos YA incluyen claNombre y oficinaNombre desde el backend
                     this.permisos = permisos;
                     
-                    console.log('Permisos recibidos del backend:', this.permisos);
+                    // Establecer valores de filtros simples primero
+                    this.$el.find('#filtro-fecha-desde').val(this.filtros.fechaDesde || '');
+                    this.$el.find('#filtro-fecha-hasta').val(this.filtros.fechaHasta || '');
+                    this.$el.find('#filtro-estatus').val(this.filtros.estatus || '');
                     
-                    this.cargarFiltros();
+                    return this.cargarFiltros();
+                }.bind(this))
+                .then(function () {
+                    // Después de cargar todos los filtros, aplicar los valores de URL
+                    return this.aplicarValoresFiltrosDesdeUrl();
+                }.bind(this))
+                .then(function () {
+                    if (this.filtrosDesdeUrl.pagina) {
+                        this.paginacion.pagina = this.filtrosDesdeUrl.pagina;
+                    }
                     this.cargarPropiedadesIniciales();
                 }.bind(this))
                 .catch(function (error) {
@@ -46,15 +108,93 @@ define('inventario:views/list', [
                 }.bind(this));
         },
 
+        aplicarValoresFiltrosDesdeUrl: function () {
+            var self = this;
+            return new Promise(function (resolve) {
+                // Primero aplicar CLA si existe
+                if (self.filtros.cla) {
+                    var $claSelect = self.$el.find('#filtro-cla');
+                    
+                    var checkCLA = function() {
+                        if ($claSelect.find('option[value="' + self.filtros.cla + '"]').length) {
+                            $claSelect.val(self.filtros.cla);
+                            
+                            // Disparar cambio para cargar oficinas
+                            self.onCLAChange(self.filtros.cla).then(function() {
+                                // Después de cargar oficinas, aplicar oficina si existe
+                                if (self.filtros.oficina) {
+                                    self.aplicarOficinaDesdeUrl().then(resolve);
+                                } else {
+                                    resolve();
+                                }
+                            });
+                        } else {
+                            setTimeout(checkCLA, 100);
+                        }
+                    };
+                    checkCLA();
+                } else if (self.filtros.oficina) {
+                    // Si hay oficina pero no CLA, aplicar directamente
+                    self.aplicarOficinaDesdeUrl().then(resolve);
+                } else {
+                    resolve();
+                }
+            });
+        },
+
+        aplicarOficinaDesdeUrl: function () {
+            var self = this;
+            return new Promise(function (resolve) {
+                if (!self.filtros.oficina) {
+                    resolve();
+                    return;
+                }
+                
+                var $oficinaSelect = self.$el.find('#filtro-oficina');
+                
+                var checkOficina = function() {
+                    if ($oficinaSelect.find('option[value="' + self.filtros.oficina + '"]').length) {
+                        $oficinaSelect.val(self.filtros.oficina);
+                        
+                        // Disparar cambio para cargar asesores
+                        self.onOficinaChange(self.filtros.oficina).then(function() {
+                            // Después de cargar asesores, aplicar asesor si existe
+                            if (self.filtros.asesor) {
+                                self.aplicarAsesorDesdeUrl();
+                            }
+                            resolve();
+                        });
+                    } else {
+                        setTimeout(checkOficina, 100);
+                    }
+                };
+                checkOficina();
+            });
+        },
+
+        aplicarAsesorDesdeUrl: function () {
+            var self = this;
+            if (!self.filtros.asesor) return;
+            
+            var $asesorSelect = self.$el.find('#filtro-asesor');
+            
+            var checkAsesor = function() {
+                if ($asesorSelect.find('option[value="' + self.filtros.asesor + '"]').length) {
+                    $asesorSelect.val(self.filtros.asesor);
+                } else {
+                    setTimeout(checkAsesor, 100);
+                }
+            };
+            checkAsesor();
+        },
+
         afterRender: function () {
             Dep.prototype.afterRender.call(this);
+            
             this.setupEventListeners();
             this.aplicarVisibilidadFiltros();
         },
 
-        // ═══════════════════════════════════════════════════════════
-        // VISIBILIDAD DE FILTROS SEGÚN ROL (ACTUALIZADO)
-        // ═══════════════════════════════════════════════════════════
         aplicarVisibilidadFiltros: function () {
             if (!this.permisos) return;
             var p = this.permisos;
@@ -65,15 +205,15 @@ define('inventario:views/list', [
                 return;
             }
 
-            // Director/Gerente: ocultar CLA y Oficina (ya están bloqueados), mostrar Asesor
+            // Director/Gerente: ve asesor, fechas, estatus
             if (p.esGerente || p.esDirector || p.esCoordinador) {
-                this.$el.find('#filtro-cla-group, #filtro-oficina-group').show(); // Se muestran pero disabled
+                this.$el.find('#filtro-cla-group, #filtro-oficina-group').hide();
                 this.$el.find('#filtro-asesor-group').show();
                 return;
             }
 
-            // Asesor (y otros): mostrar todos pero disabled, excepto fechas y estatus
-            this.$el.find('#filtro-cla-group, #filtro-oficina-group, #filtro-asesor-group').show();
+            // Asesor (y otros): solo ve fechas y estatus
+            this.$el.find('#filtro-cla-group, #filtro-oficina-group, #filtro-asesor-group').hide();
         },
 
         setupEventListeners: function () {
@@ -89,11 +229,23 @@ define('inventario:views/list', [
             });
 
             this.$el.find('#filtro-cla').on('change', function (e) {
-                self.onCLAChange($(e.currentTarget).val());
+                var claId = $(e.currentTarget).val();
+                self.onCLAChange(claId).then(function() {
+                    // Si hay filtro de oficina en URL, aplicarlo después de cargar
+                    if (self.filtros.oficina) {
+                        self.aplicarOficinaDesdeUrl();
+                    }
+                });
             });
 
             this.$el.find('#filtro-oficina').on('change', function (e) {
-                self.onOficinaChange($(e.currentTarget).val());
+                var oficinaId = $(e.currentTarget).val();
+                self.onOficinaChange(oficinaId).then(function() {
+                    // Si hay filtro de asesor en URL, aplicarlo después de cargar
+                    if (self.filtros.asesor) {
+                        self.aplicarAsesorDesdeUrl();
+                    }
+                });
             });
         },
 
@@ -101,88 +253,101 @@ define('inventario:views/list', [
 
         cargarFiltros: function () {
             var p = this.permisos;
+            var self = this;
 
-            if (!p) return;
-
-            console.log('cargarFiltros - permisos:', p);
-
-            // Si es Casa Nacional, cargar todos los CLAs normalmente
-            if (p.esCasaNacional) {
-                this.cargarTodosCLAs();
-                return;
-            }
-
-            // Si es Director/Gerente
-            if (p.esGerente || p.esDirector || p.esCoordinador) {
-                this.filtros.oficina = p.oficinaUsuario;
-                
-                // Mostrar CLA bloqueado si tiene uno
-                if (p.claUsuario) {
-                    var $cla = this.$el.find('#filtro-cla');
-                    $cla.empty().append('<option value="' + p.claUsuario + '">' + (p.claNombre || 'CLA ' + p.claUsuario) + '</option>');
-                    $cla.prop('disabled', true);
-                    console.log('Mostrando CLA:', p.claNombre);
-                } else {
-                    var $cla = this.$el.find('#filtro-cla');
-                    $cla.empty().append('<option value="">Sin CLA asignado</option>');
-                    $cla.prop('disabled', true);
+            return new Promise(function (resolve) {
+                if (!p) {
+                    resolve();
+                    return;
                 }
-                
-                // Mostrar Oficina bloqueada
-                if (p.oficinaUsuario) {
-                    var $oficina = this.$el.find('#filtro-oficina');
-                    $oficina.empty().append('<option value="' + p.oficinaUsuario + '">' + (p.oficinaNombre || 'Oficina ' + p.oficinaUsuario) + '</option>');
-                    $oficina.prop('disabled', true);
-                    console.log('Mostrando Oficina:', p.oficinaNombre);
+
+                // Si es Casa Nacional, cargar todos los CLAs normalmente
+                if (p.esCasaNacional) {
+                    self.cargarTodosCLAs().then(resolve);
+                    return;
+                }
+
+                // Si es Director/Gerente
+                if (p.esGerente || p.esDirector || p.esCoordinador) {
+                    self.filtros.oficina = p.oficinaUsuario;
                     
-                    // Cargar asesores de esa oficina
-                    this.cargarAsesoresPorOficina(p.oficinaUsuario);
-                } else {
-                    var $oficina = this.$el.find('#filtro-oficina');
-                    $oficina.empty().append('<option value="">Sin oficina asignada</option>');
-                    $oficina.prop('disabled', true);
+                    // Mostrar CLA bloqueado si tiene uno
+                    if (p.claUsuario) {
+                        var $cla = self.$el.find('#filtro-cla');
+                        $cla.empty().append('<option value="' + p.claUsuario + '">' + (p.claNombre || 'CLA asignado') + '</option>');
+                        $cla.prop('disabled', true);
+                    } else {
+                        var $cla = self.$el.find('#filtro-cla');
+                        $cla.empty().append('<option value="">Sin CLA asignado</option>');
+                        $cla.prop('disabled', true);
+                    }
+                    
+                    // Mostrar Oficina bloqueada
+                    if (p.oficinaUsuario) {
+                        var $oficina = self.$el.find('#filtro-oficina');
+                        $oficina.empty().append('<option value="' + p.oficinaUsuario + '">' + (p.oficinaNombre || 'Oficina asignada') + '</option>');
+                        $oficina.prop('disabled', true);
+                        
+                        // Cargar asesores de esa oficina
+                        self.cargarAsesoresPorOficina(p.oficinaUsuario).then(resolve);
+                    } else {
+                        resolve();
+                    }
+                    return;
                 }
-                return;
-            }
 
-            // Si es Asesor (o tratado como asesor)
-            if (p.esAsesor) {
-                this.filtros.asesor = p.usuarioId;
-                
-                // Mostrar CLA bloqueado si tiene uno
-                if (p.claUsuario) {
-                    var $cla = this.$el.find('#filtro-cla');
-                    $cla.empty().append('<option value="' + p.claUsuario + '">' + (p.claNombre || 'CLA ' + p.claUsuario) + '</option>');
-                    $cla.prop('disabled', true);
+                // Si es Asesor (o tratado como asesor)
+                if (p.esAsesor) {
+                    self.filtros.asesor = p.usuarioId;
+                    
+                    // Mostrar CLA bloqueado si tiene uno
+                    if (p.claUsuario) {
+                        var $cla = self.$el.find('#filtro-cla');
+                        $cla.empty().append('<option value="' + p.claUsuario + '">' + (p.claNombre || 'CLA asignado') + '</option>');
+                        $cla.prop('disabled', true);
+                    } else {
+                        var $cla = self.$el.find('#filtro-cla');
+                        $cla.empty().append('<option value="">Sin CLA asignado</option>');
+                        $cla.prop('disabled', true);
+                    }
+                    
+                    // Mostrar Oficina bloqueada
+                    if (p.oficinaUsuario) {
+                        var $oficina = self.$el.find('#filtro-oficina');
+                        $oficina.empty().append('<option value="' + p.oficinaUsuario + '">' + (p.oficinaNombre || 'Oficina asignada') + '</option>');
+                        $oficina.prop('disabled', true);
+                    } else {
+                        var $oficina = self.$el.find('#filtro-oficina');
+                        $oficina.empty().append('<option value="">Sin oficina asignada</option>');
+                        $oficina.prop('disabled', true);
+                    }
+                    
+                    // Mostrar Asesor bloqueado (él mismo)
+                    var $asesor = self.$el.find('#filtro-asesor');
+                    $asesor.empty().append('<option value="' + p.usuarioId + '">' + (p.userName || 'Usuario actual') + '</option>');
+                    $asesor.prop('disabled', true);
+                    
+                    resolve();
                 } else {
-                    var $cla = this.$el.find('#filtro-cla');
-                    $cla.empty().append('<option value="">Sin CLA asignado</option>');
-                    $cla.prop('disabled', true);
+                    resolve();
                 }
-                
-                // Mostrar Oficina bloqueada
-                if (p.oficinaUsuario) {
-                    var $oficina = this.$el.find('#filtro-oficina');
-                    $oficina.empty().append('<option value="' + p.oficinaUsuario + '">' + (p.oficinaNombre || 'Oficina ' + p.oficinaUsuario) + '</option>');
-                    $oficina.prop('disabled', true);
-                } else {
-                    var $oficina = this.$el.find('#filtro-oficina');
-                    $oficina.empty().append('<option value="">Sin oficina asignada</option>');
-                    $oficina.prop('disabled', true);
-                }
-                
-                // Mostrar Asesor bloqueado (él mismo)
-                var $asesor = this.$el.find('#filtro-asesor');
-                $asesor.empty().append('<option value="' + p.usuarioId + '">' + (p.userName || 'Usuario ' + p.usuarioId) + '</option>');
-                $asesor.prop('disabled', true);
-            }
+            });
         },
 
         cargarTodosCLAs: function () {
-            Espo.Ajax.getRequest('InvLista/action/getCLAs')
-                .then(function (response) {
-                    if (response.success) this.poblarSelectCLAs(response.data);
-                }.bind(this));
+            var self = this;
+            return new Promise(function (resolve) {
+                Espo.Ajax.getRequest('InvLista/action/getCLAs')
+                    .then(function (response) {
+                        if (response.success) {
+                            self.poblarSelectCLAs(response.data);
+                        }
+                        resolve();
+                    }.bind(this))
+                    .catch(function() {
+                        resolve();
+                    });
+            });
         },
 
         poblarSelectCLAs: function (clas) {
@@ -194,21 +359,31 @@ define('inventario:views/list', [
         },
 
         onCLAChange: function (claId) {
-            var selectOficina = this.$el.find('#filtro-oficina');
-            var selectAsesor  = this.$el.find('#filtro-asesor');
+            var self = this;
+            return new Promise(function (resolve) {
+                var selectOficina = self.$el.find('#filtro-oficina');
+                var selectAsesor  = self.$el.find('#filtro-asesor');
 
-            selectOficina.html('<option value="">Cargando...</option>').prop('disabled', true);
-            selectAsesor.html('<option value="">Todos los asesores</option>').prop('disabled', true);
+                selectOficina.html('<option value="">Cargando...</option>').prop('disabled', true);
+                selectAsesor.html('<option value="">Todos los asesores</option>').prop('disabled', true);
 
-            if (!claId) {
-                selectOficina.html('<option value="">Seleccione un CLA primero</option>');
-                return;
-            }
+                if (!claId) {
+                    selectOficina.html('<option value="">Seleccione un CLA primero</option>');
+                    resolve();
+                    return;
+                }
 
-            Espo.Ajax.getRequest('InvLista/action/getOficinasByCLA', { claId: claId })
-                .then(function (response) {
-                    if (response.success) this.poblarSelectOficinas(response.data);
-                }.bind(this));
+                Espo.Ajax.getRequest('InvLista/action/getOficinasByCLA', { claId: claId })
+                    .then(function (response) {
+                        if (response.success) {
+                            self.poblarSelectOficinas(response.data);
+                        }
+                        resolve();
+                    })
+                    .catch(function() {
+                        resolve();
+                    });
+            });
         },
 
         poblarSelectOficinas: function (oficinas) {
@@ -221,36 +396,44 @@ define('inventario:views/list', [
         },
 
         onOficinaChange: function (oficinaId) {
-            var selectAsesor = this.$el.find('#filtro-asesor');
-            selectAsesor.html('<option value="">Cargando...</option>').prop('disabled', true);
+            var self = this;
+            return new Promise(function (resolve) {
+                var selectAsesor = self.$el.find('#filtro-asesor');
+                selectAsesor.html('<option value="">Cargando...</option>').prop('disabled', true);
 
-            if (!oficinaId) {
-                selectAsesor.html('<option value="">Todos los asesores</option>').prop('disabled', false);
-                return;
-            }
+                if (!oficinaId) {
+                    selectAsesor.html('<option value="">Todos los asesores</option>').prop('disabled', false);
+                    resolve();
+                    return;
+                }
 
-            this.cargarAsesoresPorOficina(oficinaId);
+                self.cargarAsesoresPorOficina(oficinaId).then(resolve);
+            });
         },
 
         cargarAsesoresPorOficina: function (oficinaId) {
             var self = this;
-            Espo.Ajax.getRequest('InvLista/action/getAsesoresByOficina', { oficinaId: oficinaId })
-                .then(function (response) {
-                    if (response.success) {
-                        self.poblarSelectAsesores(response.data);
-                    } else {
-                        console.error('Error asesores:', response.error);
+            return new Promise(function (resolve) {
+                Espo.Ajax.getRequest('InvLista/action/getAsesoresByOficina', { oficinaId: oficinaId })
+                    .then(function (response) {
+                        if (response.success) {
+                            self.poblarSelectAsesores(response.data);
+                        } else {
+                            console.error('Error asesores:', response.error);
+                            self.$el.find('#filtro-asesor')
+                                .html('<option value="">Error al cargar asesores</option>')
+                                .prop('disabled', false);
+                        }
+                        resolve();
+                    })
+                    .catch(function (err) {
+                        console.error('Error cargando asesores:', err);
                         self.$el.find('#filtro-asesor')
                             .html('<option value="">Error al cargar asesores</option>')
                             .prop('disabled', false);
-                    }
-                })
-                .catch(function (err) {
-                    console.error('Error cargando asesores:', err);
-                    self.$el.find('#filtro-asesor')
-                        .html('<option value="">Error al cargar asesores</option>')
-                        .prop('disabled', false);
-                });
+                        resolve();
+                    });
+            });
         },
 
         poblarSelectAsesores: function (asesores) {
@@ -270,8 +453,8 @@ define('inventario:views/list', [
 
         cargarPropiedadesIniciales: function () {
             var params = { 
-                pagina: 1,
-                userId: this.getUser().id  // Enviar ID del usuario actual para filtros de rol
+                pagina: this.paginacion.pagina,
+                userId: this.getUser().id
             };
             var p = this.permisos;
 
@@ -280,17 +463,23 @@ define('inventario:views/list', [
                 return;
             }
 
-            // Casa Nacional: no añadir filtros automáticos
-            if (p.esCasaNacional) {
-                // No añadir nada
-            }
-            // Director/Gerente: filtrar por su oficina
-            else if (p.esGerente || p.esDirector || p.esCoordinador) {
-                if (p.oficinaUsuario) params.oficinaId = p.oficinaUsuario;
-            }
-            // Asesor: filtrar por su ID
-            else if (p.esAsesor) {
-                params.asesorId = p.usuarioId;
+            // Aplicar filtros desde URL si existen
+            if (this.filtros.cla) params.claId = this.filtros.cla;
+            if (this.filtros.oficina) params.oficinaId = this.filtros.oficina;
+            if (this.filtros.asesor) params.asesorId = this.filtros.asesor;
+            if (this.filtros.fechaDesde) params.fechaDesde = this.filtros.fechaDesde;
+            if (this.filtros.fechaHasta) params.fechaHasta = this.filtros.fechaHasta;
+            if (this.filtros.estatus) params.estatus = this.filtros.estatus;
+
+            // Si no hay filtros manuales, aplicar filtros automáticos por rol
+            if (!params.claId && !params.oficinaId && !params.asesorId) {
+                if (p.esCasaNacional) {
+                    // No añadir nada
+                } else if (p.esGerente || p.esDirector || p.esCoordinador) {
+                    if (p.oficinaUsuario) params.oficinaId = p.oficinaUsuario;
+                } else if (p.esAsesor) {
+                    params.asesorId = p.usuarioId;
+                }
             }
 
             this.fetchPropiedades(params);
@@ -312,18 +501,36 @@ define('inventario:views/list', [
                 estatus:   estatus
             };
 
-            // Los filtros manuales respetan los roles automáticos en el backend
+            // Respetar restricciones de rol
+            var p = this.permisos;
+            if (p) {
+                if (p.esAsesor) {
+                    this.filtros.asesor  = p.usuarioId;
+                    this.filtros.cla     = null;
+                    this.filtros.oficina = null;
+                } else if (p.esGerente || p.esDirector || p.esCoordinador) {
+                    this.filtros.oficina = p.oficinaUsuario;
+                    this.filtros.cla     = null;
+                }
+            }
+
             this.paginacion.pagina = 1;
+            
+            // Actualizar URL con los nuevos filtros
+            this.actualizarUrlConFiltros();
+            
             this.fetchConFiltrosActuales();
         },
 
         limpiarFiltros: function () {
+            this.$el.find('#filtro-cla').val('');
+            this.$el.find('#filtro-oficina').val('').prop('disabled', true)
+                .html('<option value="">Seleccione un CLA primero</option>');
+            this.$el.find('#filtro-asesor').val('').prop('disabled', true)
+                .html('<option value="">Todos los asesores</option>');
             this.$el.find('#filtro-fecha-desde').val('');
             this.$el.find('#filtro-fecha-hasta').val('');
             this.$el.find('#filtro-estatus').val('');
-
-            // Restaurar valores bloqueados según rol
-            this.cargarFiltros();
 
             this.filtros = { 
                 cla: null, 
@@ -334,13 +541,17 @@ define('inventario:views/list', [
                 estatus: null
             };
             this.paginacion.pagina = 1;
+            
+            // Actualizar URL (quitar filtros)
+            this.actualizarUrlConFiltros();
+            
             this.cargarPropiedadesIniciales();
         },
 
         fetchConFiltrosActuales: function (pagina) {
             var params = { 
                 pagina: pagina || this.paginacion.pagina,
-                userId: this.getUser().id  // Siempre enviar userId para filtros de rol
+                userId: this.getUser().id
             };
             if (this.filtros.cla)        params.claId      = this.filtros.cla;
             if (this.filtros.oficina)    params.oficinaId  = this.filtros.oficina;
@@ -399,6 +610,10 @@ define('inventario:views/list', [
         irAPagina: function (pagina) {
             if (pagina < 1 || pagina > this.paginacion.totalPaginas || this.cargandoPagina) return;
             this.paginacion.pagina = pagina;
+            
+            // Actualizar URL con nueva página
+            this.actualizarUrlConFiltros();
+            
             this.fetchConFiltrosActuales(pagina);
         },
 
@@ -611,7 +826,21 @@ define('inventario:views/list', [
         },
 
         verDetalle: function (propiedadId) {
-            this.getRouter().navigate('#InvLista/propiedad/propiedadId=' + propiedadId, { trigger: true });
+            // Pasar filtros actuales a la URL de propiedad
+            var queryParams = [];
+            
+            if (this.filtros.cla) queryParams.push('cla=' + encodeURIComponent(this.filtros.cla));
+            if (this.filtros.oficina) queryParams.push('oficina=' + encodeURIComponent(this.filtros.oficina));
+            if (this.filtros.asesor) queryParams.push('asesor=' + encodeURIComponent(this.filtros.asesor));
+            if (this.filtros.fechaDesde) queryParams.push('fechaDesde=' + encodeURIComponent(this.filtros.fechaDesde));
+            if (this.filtros.fechaHasta) queryParams.push('fechaHasta=' + encodeURIComponent(this.filtros.fechaHasta));
+            if (this.filtros.estatus) queryParams.push('estatus=' + encodeURIComponent(this.filtros.estatus));
+            if (this.paginacion.pagina > 1) queryParams.push('pagina=' + this.paginacion.pagina);
+            
+            var queryString = queryParams.length > 0 ? '?' + queryParams.join('&') : '';
+            var ruta = '#InvLista/propiedad/propiedadId=' + propiedadId + queryString;
+            
+            this.getRouter().navigate(ruta, { trigger: true });
         },
 
         esc: function (text) {

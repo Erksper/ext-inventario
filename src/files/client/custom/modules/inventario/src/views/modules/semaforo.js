@@ -11,8 +11,11 @@ define('inventario:views/modules/semaforo', [], function () {
     SemaforoManager.prototype.setupEventListeners = function () {
         var self = this;
         
+        console.log('🔍 semaforoManager.setupEventListeners');
+        
         // Selección de semáforo
-        this.view.$el.find('[data-action="selectSemaforo"]').on('click', function (e) {
+        this.view.$el.off('click', '[data-action="selectSemaforo"]').on('click', '[data-action="selectSemaforo"]', function (e) {
+            console.log('🔍 Click en selectSemaforo');
             self.seleccionarSemaforo(e);
         });
     };

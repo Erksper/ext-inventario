@@ -1,18 +1,98 @@
 define('inventario:views/propiedad', [
     'view',
+    'inventario:views/modules/permisos',
     'inventario:views/modules/semaforo',
     'inventario:views/modules/calculadora-notas',
     'inventario:views/modules/modal-crear-recaudo'
-], function (Dep, SemaforoManager, CalculadoraNotas, ModalCrearRecaudoManager) {
+], function (Dep, PermisosManager, SemaforoManager, CalculadoraNotas, ModalCrearRecaudoManager) {
 
     return Dep.extend({
 
         template: 'inventario:propiedad',
 
+        events: {
+            'click [data-action="toggle-panel"]': function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.togglePanel(e);
+            },
+            'click [data-action="volver"], [data-action="cancelar"]': function () {
+                // Volver a lista con los filtros guardados
+                var queryParams = [];
+                
+                if (this.filtrosRetorno.cla) queryParams.push('cla=' + encodeURIComponent(this.filtrosRetorno.cla));
+                if (this.filtrosRetorno.oficina) queryParams.push('oficina=' + encodeURIComponent(this.filtrosRetorno.oficina));
+                if (this.filtrosRetorno.asesor) queryParams.push('asesor=' + encodeURIComponent(this.filtrosRetorno.asesor));
+                if (this.filtrosRetorno.fechaDesde) queryParams.push('fechaDesde=' + encodeURIComponent(this.filtrosRetorno.fechaDesde));
+                if (this.filtrosRetorno.fechaHasta) queryParams.push('fechaHasta=' + encodeURIComponent(this.filtrosRetorno.fechaHasta));
+                if (this.filtrosRetorno.estatus) queryParams.push('estatus=' + encodeURIComponent(this.filtrosRetorno.estatus));
+                if (this.filtrosRetorno.pagina) queryParams.push('pagina=' + this.filtrosRetorno.pagina);
+                
+                var queryString = queryParams.length > 0 ? '?' + queryParams.join('&') : '';
+                var ruta = '#InvLista' + queryString;
+                
+                this.getRouter().navigate(ruta, { trigger: true });
+            },
+            'click [data-action="guardar"]': function () {
+                this.guardarInventario();
+            },
+            'change #buyerPersona': function (e) {
+                if (!this.puedeEditar) return;
+                this.subBuyersSeleccionados = [];
+                this.cargarSubBuyersDisponibles($(e.currentTarget).val());
+            },
+            'change input[name="apoderado"]': function (e) {
+                if (!this.puedeEditar) return;
+                var mostrar = $(e.currentTarget).val() === 'true';
+                this.mostrarObligaciones(mostrar);
+                if (mostrar && this.listasRecaudos.apoderado.mostrados.length === 0) {
+                    this.cargarYMostrarRecaudosApoderado();
+                }
+            },
+            'change #tipoPersona': function (e) {
+                if (!this.puedeEditar) return;
+                this.cargarYMostrarRecaudosLegales($(e.target).val());
+                this.calcularNotasPorcentajes();
+            },
+            'change .select-otros': function (e) {
+                if (!this.puedeEditar) return;
+                this.manejarCambioSelectOtros(e);
+            },
+            'click [data-action="selectRecaudoSemaforo"]': function (e) {
+                if (!this.puedeEditar) return;
+                this.seleccionarRecaudoSemaforo(e);
+            },
+            'click [data-action="showInfoRecaudo"]': function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.mostrarInfoRecaudoModal(e);
+            },
+            'click [data-action="eliminarRecaudo"]': function (e) {
+                if (!this.puedeEditar) return;
+                e.preventDefault();
+                e.stopPropagation();
+                this.manejarEliminacionRecaudo(e);
+            },
+            'click .btn-agregar-recaudo': function (e) {
+                if (!this.puedeEditar) return;
+                e.preventDefault();
+                this.manejarAgregarRecaudo(e);
+            }
+        },
+
         setup: function () {
             Dep.prototype.setup.call(this);
 
             this.propiedadId = this.options.propiedadId;
+            
+            // Guardar filtros de la URL para volver
+            this.filtrosRetorno = this.parseFiltrosRetorno();
+            
+            this.permisosManager = new PermisosManager(this);
+            this.puedeEditar = false;
+            this.esAsesor = false;
+            this.usuarioId = this.getUser().id;
+            this.datosListos = false;
 
             if (!this.propiedadId) {
                 console.error('❌ NO HAY propiedadId');
@@ -40,11 +120,123 @@ define('inventario:views/propiedad', [
             this.valoresRecaudosMercadeo  = {};
             this.valoresRecaudosApoderado = {};
 
-            this.panelsInitialized          = false;
             this.datosCompletamenteCargados = false;
             this.cargasPendientes           = 0;
 
-            this.cargarDatos();
+            // Primero cargar permisos, luego los datos
+            this.cargarPermisosYValidarAcceso();
+        },
+
+        // Parsear filtros de retorno desde la URL
+        parseFiltrosRetorno: function() {
+            var hash = window.location.hash;
+            var filtros = {};
+            
+            if (hash && hash.includes('?')) {
+                var queryString = hash.split('?')[1];
+                var params = new URLSearchParams(queryString);
+                
+                if (params.get('cla')) filtros.cla = params.get('cla');
+                if (params.get('oficina')) filtros.oficina = params.get('oficina');
+                if (params.get('asesor')) filtros.asesor = params.get('asesor');
+                if (params.get('fechaDesde')) filtros.fechaDesde = params.get('fechaDesde');
+                if (params.get('fechaHasta')) filtros.fechaHasta = params.get('fechaHasta');
+                if (params.get('estatus')) filtros.estatus = params.get('estatus');
+                if (params.get('pagina')) filtros.pagina = params.get('pagina');
+            }
+            
+            return filtros;
+        },
+
+        cargarPermisosYValidarAcceso: function () {
+            this.permisosManager.cargarPermisosUsuario()
+                .then(function (permisos) {
+                    this.permisos = permisos;
+                    this.esAsesor = permisos.esAsesor;
+                    
+                    console.log('🔍 PERMISOS USUARIO:', this.permisos);
+                    
+                    // Ahora cargar datos de la propiedad
+                    this.cargarDatos();
+                }.bind(this))
+                .catch(function (error) {
+                    console.error('Error cargando permisos:', error);
+                    Espo.Ui.error('Error al verificar permisos');
+                    this.getRouter().navigate('#InvLista', { trigger: true });
+                }.bind(this));
+        },
+
+        validarAccesoPropiedad: function (propiedadData, inventarioData) {
+            var self = this;
+            return new Promise(function (resolve, reject) {
+                console.log('🔍 Validando acceso para propiedad:', propiedadData.id);
+                console.log('🔍 Permisos usuario:', self.permisos);
+                
+                // Casa Nacional puede ver todo
+                if (self.permisos.esCasaNacional) {
+                    self.puedeEditar = true;
+                    console.log('✅ Casa Nacional - Acceso total y edición permitida');
+                    resolve();
+                    return;
+                }
+
+                // Obtener oficina de la propiedad (de los teams)
+                Espo.Ajax.getRequest('InvLista/action/getPropiedadTeams', { propiedadId: self.propiedadId })
+                    .then(function (response) {
+                        console.log('🔍 Respuesta getPropiedadTeams:', response);
+                        
+                        if (!response.success) {
+                            reject('Error al obtener datos de la propiedad');
+                            return;
+                        }
+
+                        var oficinaPropiedadId = response.data.oficinaId;
+                        var asesorPropiedadId = response.data.asesorId;
+
+                        // Si es Gerente/Director, validar por oficina
+                        if (self.permisos.esGerente || self.permisos.esDirector || self.permisos.esCoordinador) {
+                            console.log('🔍 Usuario es Gerente/Director');
+                            console.log('🔍 Oficina usuario:', self.permisos.oficinaUsuario);
+                            console.log('🔍 Oficina propiedad:', oficinaPropiedadId);
+                            
+                            if (oficinaPropiedadId === self.permisos.oficinaUsuario) {
+                                self.puedeEditar = true;
+                                console.log('✅ Gerente - Acceso y edición permitida');
+                                resolve();
+                            } else {
+                                console.log('❌ Gerente - Oficina no coincide');
+                                reject('Esta propiedad no pertenece a su oficina');
+                            }
+                            return;
+                        }
+
+                        // Si es Asesor, validar por asesor
+                        if (self.permisos.esAsesor) {
+                            console.log('🔍 Usuario es Asesor');
+                            console.log('🔍 Asesor usuario:', self.usuarioId);
+                            console.log('🔍 Asesor propiedad:', asesorPropiedadId);
+                            
+                            if (asesorPropiedadId === self.usuarioId) {
+                                self.puedeEditar = false; // Asesor solo lectura
+                                console.log('✅ Asesor - Acceso permitido (solo lectura)');
+                                resolve();
+                            } else {
+                                console.log('❌ Asesor - No coincide asesor');
+                                reject('No tiene permisos para ver esta propiedad');
+                            }
+                            return;
+                        }
+
+                        // Otros casos (default) - solo lectura
+                        self.puedeEditar = false;
+                        console.log('ℹ️ Otro rol - Acceso solo lectura');
+                        resolve();
+                    })
+                    .catch(function (error) {
+                        console.error('Error en validación:', error);
+                        reject('Error al validar acceso: ' + error);
+                    });
+            });
         },
 
         registrarCargaPendiente: function () {
@@ -56,18 +248,10 @@ define('inventario:views/propiedad', [
             if (this.cargasPendientes <= 0) {
                 this.cargasPendientes           = 0;
                 this.datosCompletamenteCargados = true;
-                this.calcularNotasPorcentajes();
-
-                // Cerrar todos los paneles
-                this.$el.find('.panel-body').hide();
-                this.$el.find('.panel-heading .fas')
-                    .removeClass('fa-chevron-up').addClass('fa-chevron-down');
-
-                var self = this;
-                setTimeout(function () {
-                    self.$el.find('.panel-body').hide();
-                    if (self.isRendered()) self.inicializarPanels();
-                }, 200);
+                
+                if (this.puedeEditar) {
+                    this.calcularNotasPorcentajes();
+                }
             }
         },
 
@@ -89,118 +273,88 @@ define('inventario:views/propiedad', [
             if (this.vistaYaRenderizada) return;
             this.vistaYaRenderizada = true;
 
-            this.setupEventListeners();
+            console.log('🔍 afterRender - esperando datos...');
+            
+            // Solo mostrar loader y esperar
+            this.$el.find('#loading-container').show();
+            this.$el.find('#form-container').hide();
+        },
 
-            if (this.calculadoraNotas) this.calculadoraNotas.inicializarPorcentajes();
-            if (this.modalCrearRecaudo) this.modalCrearRecaudo.inicializar();
+        inicializarInterfazCompleta: function () {
+            console.log('🔍 inicializarInterfazCompleta - puedeEditar:', this.puedeEditar);
+            console.log('🔍 inicializarInterfazCompleta - permisos:', this.permisos);
+
+            if (this.puedeEditar) {
+                console.log('🔍 Inicializando calculadora y modal (modo edición)');
+                if (this.calculadoraNotas) this.calculadoraNotas.inicializarPorcentajes();
+                if (this.modalCrearRecaudo) this.modalCrearRecaudo.inicializar();
+                
+                // Semáforo manager solo necesita setup si puede editar
+                if (this.semaforoManager) {
+                    this.semaforoManager.setupEventListeners();
+                }
+
+                // Evento para recaudo creado
+                $(document).off('recaudoCreado.inventario').on('recaudoCreado.inventario', function (e, data) {
+                    console.log('🔍 Recaudo creado evento recibido:', data);
+                    this.onRecaudoCreado(data);
+                }.bind(this));
+            }
 
             this.actualizarEstadosOtros();
+            this.aplicarModoSoloLectura();
 
-            var self = this;
-            setTimeout(function () {
-                self.$el.find('.panel-body').hide();
-                self.$el.find('.panel-heading .fas')
-                    .removeClass('fa-chevron-up').addClass('fa-chevron-down');
-            }, 100);
+            // Abrir primer panel por defecto
+            var $firstPanel = this.$el.find('.panel-heading').first();
+            if ($firstPanel.length) {
+                $firstPanel.addClass('active');
+                $firstPanel.next('.panel-body').show();
+                $firstPanel.find('.fas').removeClass('fa-chevron-down').addClass('fa-chevron-up');
+            }
         },
 
-        inicializarPanels: function () {
-            if (this.panelsInitialized) return;
-            this.panelsInitialized = true;
-            this.inicializarSelect2SubBuyers();
-        },
-
-        setupEventListeners: function () {
-            var self = this;
-
-            // Toggle panels
-            this.$el.on('click', '[data-action="toggle-panel"]', function (e) {
-                e.preventDefault();
-                e.stopPropagation();
-                if (!self.panelsInitialized || !self.datosCompletamenteCargados) return false;
-                self.togglePanel($(this).closest('.panel-heading')[0]);
-            });
-
-            // Buyer persona → cargar sub buyers
-            this.$el.find('#buyerPersona').on('change', function (e) {
-                self.subBuyersSeleccionados = [];
-                self.cargarSubBuyersDisponibles($(e.currentTarget).val());
-            });
-
-            // Volver / cancelar
-            this.$el.on('click', '[data-action="volver"], [data-action="cancelar"]', function () {
-                window.location.href = '#InvLista';
-                window.location.reload();
-            });
-
-            // Guardar
-            this.$el.on('click', '[data-action="guardar"]', function () {
-                self.guardarInventario();
-            });
-
-            // Apoderado
-            this.$el.on('change', 'input[name="apoderado"]', function (e) {
-                var mostrar = $(e.currentTarget).val() === 'true';
-                self.mostrarObligaciones(mostrar);
-                if (mostrar && self.listasRecaudos.apoderado.mostrados.length === 0) {
-                    self.cargarYMostrarRecaudosApoderado();
+        aplicarModoSoloLectura: function () {
+            if (!this.puedeEditar) {
+                this.$el.find('input, select, textarea, button[data-action="guardar"], .btn-agregar-recaudo, .btn-eliminar-recaudo, .color-option')
+                    .prop('disabled', true)
+                    .css('opacity', '0.7')
+                    .css('cursor', 'not-allowed');
+                
+                this.$el.find('[data-action="guardar"]').hide();
+                
+                if (this.$el.find('#modo-lectura-msg').length === 0) {
+                    this.$el.find('#form-container').prepend(
+                        '<div id="modo-lectura-msg" class="alert alert-info" style="margin-bottom:20px;">' +
+                        '<i class="fas fa-info-circle"></i> ' +
+                        'Modo solo lectura: No tiene permisos para editar esta propiedad.' +
+                        '</div>'
+                    );
                 }
-            });
-
-            // Tipo persona
-            this.$el.on('change', '#tipoPersona', function (e) {
-                self.cargarYMostrarRecaudosLegales($(e.target).val());
-                self.calcularNotasPorcentajes();
-            });
-
-            // Buyer persona (delegado)
-            this.$el.on('change', '#buyerPersona', function (e) {
-                self.cargarSubBuyersDisponibles($(e.target).val());
-            });
-
-            // Semáforos
-            if (this.semaforoManager) this.semaforoManager.setupEventListeners();
-
-            this.$el.on('click', '[data-action="selectRecaudoSemaforo"]', function (e) {
-                self.seleccionarRecaudoSemaforo(e);
-            });
-
-            this.$el.on('click', '[data-action="showInfoRecaudo"]', function (e) {
-                e.preventDefault(); e.stopPropagation();
-                self.mostrarInfoRecaudoModal(e);
-            });
-
-            this.$el.on('click', '[data-action="eliminarRecaudo"]', function (e) {
-                e.preventDefault(); e.stopPropagation();
-                self.manejarEliminacionRecaudo(e);
-            });
-
-            this.$el.on('click', '.btn-agregar-recaudo', function (e) {
-                e.preventDefault();
-                self.manejarAgregarRecaudo(e);
-            });
-
-            this.$el.on('change', '.select-otros', function (e) {
-                self.manejarCambioSelectOtros(e);
-            });
-
-            $(document).on('recaudoCreado.inventario', function (e, data) {
-                self.onRecaudoCreado(data);
-            });
+            } else {
+                this.$el.find('input, select, textarea, button[data-action="guardar"], .btn-agregar-recaudo, .btn-eliminar-recaudo, .color-option')
+                    .prop('disabled', false)
+                    .css('opacity', '1')
+                    .css('cursor', 'pointer');
+                
+                this.$el.find('[data-action="guardar"]').show();
+                this.$el.find('#modo-lectura-msg').remove();
+            }
         },
 
-        togglePanel: function (element) {
-            var $heading = $(element);
-            var $panel   = $heading.closest('.panel');
-            var $body    = $panel.find('.panel-body');
-            var $icon    = $heading.find('.fa-chevron-down, .fa-chevron-up');
+        togglePanel: function (e) {
+            var $header = $(e.currentTarget);
+            var $panel = $header.closest('.panel');
+            var $body = $panel.find('.panel-body');
+            var $icon = $header.find('.fa-chevron-down, .fa-chevron-up');
 
             if ($body.is(':visible')) {
-                $body.hide();
+                $body.slideUp('fast');
                 $icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
+                $header.removeClass('active');
             } else {
-                $body.show();
+                $body.slideDown('fast');
                 $icon.removeClass('fa-chevron-down').addClass('fa-chevron-up');
+                $header.addClass('active');
             }
         },
 
@@ -222,22 +376,30 @@ define('inventario:views/propiedad', [
                         self.inventarioData = response.data.inventario;
                         self.propiedadData  = response.data.propiedad;
                         self.inventarioId   = self.inventarioData.id;
-                        self.datosYaCargados = true;
-                        self.cargandoDatos   = false;
-                        self.mostrarDatos();
+                        
+                        return self.validarAccesoPropiedad(self.propiedadData, self.inventarioData);
                     } else {
-                        self.$el.find('#loading-container').hide();
-                        self.cargandoDatos = false;
-                        Espo.Ui.error(response.error || 'Error al cargar datos');
-                        self.getRouter().navigate('#InvLista', { trigger: true });
+                        throw new Error(response.error || 'Error al cargar datos');
                     }
                 })
+                .then(function () {
+                    self.datosYaCargados = true;
+                    self.cargandoDatos   = false;
+                    self.mostrarDatos();
+                    
+                    self.inicializarInterfazCompleta();
+                })
                 .catch(function (error) {
-                    console.error('Error en Ajax:', error);
+                    console.error('Error:', error);
                     self.$el.find('#loading-container').hide();
                     self.cargandoDatos = false;
-                    Espo.Ui.error('Error al cargar datos de la propiedad');
-                    self.getRouter().navigate('#InvLista', { trigger: true });
+                    
+                    var mensaje = typeof error === 'string' ? error : 'Error al cargar datos de la propiedad';
+                    Espo.Ui.error(mensaje);
+                    
+                    setTimeout(function () {
+                        self.getRouter().navigate('#InvLista', { trigger: true });
+                    }, 2000);
                 });
         },
 
@@ -259,7 +421,6 @@ define('inventario:views/propiedad', [
             this.mostrarInfoOtros();
             this.mostrarInfoApoderado();
 
-            // Cerrar paneles
             this.$el.find('.panel-body').hide();
             this.$el.find('.panel-heading .fas')
                 .removeClass('fa-chevron-up').addClass('fa-chevron-down');
@@ -269,6 +430,25 @@ define('inventario:views/propiedad', [
             this.$el.find('#prop-tipoOperacion').text(this.propiedadData.tipoOperacion  || '-');
             this.$el.find('#prop-tipoPropiedad').text(this.propiedadData.tipoPropiedad  || '-');
             this.$el.find('#prop-subTipoPropiedad').text(this.propiedadData.subTipoPropiedad || '-');
+            
+            // Mostrar precio
+            var precioTexto = '-';
+            if (this.propiedadData.precioEnContrato) {
+                var moneda = this.propiedadData.monedaEnContrato || 'USD';
+                try {
+                    var formatter = new Intl.NumberFormat('es-VE', {
+                        style: 'currency',
+                        currency: moneda,
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0
+                    });
+                    precioTexto = formatter.format(this.propiedadData.precioEnContrato);
+                } catch (e) {
+                    precioTexto = this.propiedadData.precioEnContrato + ' ' + moneda;
+                }
+            }
+            this.$el.find('#prop-precio').text(precioTexto);
+            
             this.$el.find('#prop-m2C').text(this.propiedadData.m2C ? this.propiedadData.m2C + ' m²' : '-');
             this.$el.find('#prop-m2T').text(this.propiedadData.m2T ? this.propiedadData.m2T + ' m²' : '-');
             this.$el.find('#prop-ubicacion').text(this.propiedadData.ubicacion || '-');
@@ -284,13 +464,16 @@ define('inventario:views/propiedad', [
 
             this.$el.find('#prop-diasMercado').text(this.calcularDiasEnMercado(this.propiedadData.fechaAlta));
 
-            var $badge = this.$el.find('#prop-status');
-            $badge.text(this.propiedadData.status || '-');
-            var statusColors = {
-                'Disponible': '#27ae60', 'Reservada': '#f39c12', 'Vendida': '#e74c3c',
-                'Rentada': '#3498db', 'Retirada': '#95a5a6', 'En promocion': '#27ae60'
-            };
-            $badge.css({ 'background-color': statusColors[this.propiedadData.status] || '#95a5a6', 'color': 'white' });
+            // Estado como texto plano (sin badge)
+            var statusOriginal = this.propiedadData.status || '-';
+            var statusFormateado = statusOriginal;
+            
+            // Formatear 'enPromocion' a 'En promocion'
+            if (statusOriginal && (statusOriginal.toLowerCase() === 'enpromocion' || statusOriginal === 'enPromocion')) {
+                statusFormateado = 'En promocion';
+            }
+            
+            this.$el.find('#prop-status').text(statusFormateado);
         },
 
         calcularDiasEnMercado: function (fechaAlta) {
@@ -347,17 +530,10 @@ define('inventario:views/propiedad', [
 
         // ========== SUB BUYERS ==========
 
-        inicializarSelect2SubBuyers: function () {
-            var $select = this.$el.find('#subBuyerPersona');
-            if ($select.length === 0 || typeof $select.select2 !== 'function') return;
-            try {
-                $select.select2({ placeholder: 'Seleccione sub buyers', allowClear: true, multiple: true, width: '100%' });
-            } catch (e) { console.error('Error Select2:', e); }
-        },
-
         cargarSubBuyersDisponibles: function (buyerTipo) {
             var self = this;
             var $container = this.$el.find('#subbuyers-checkbox-container');
+            
             $container.html('<div class="text-center" style="padding:20px;color:#999;"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>');
 
             Espo.Ajax.getRequest('InvPropiedades/action/getSubBuyersByBuyer', { buyer: buyerTipo })
@@ -366,17 +542,20 @@ define('inventario:views/propiedad', [
                         var html = '';
                         response.data.forEach(function (sb) {
                             var checked = self.subBuyersSeleccionados.includes(sb.id) ? 'checked' : '';
+                            var disabled = !self.puedeEditar ? 'disabled' : '';
                             html += '<label class="subbuyer-checkbox-option">';
-                            html += '<input type="checkbox" class="subbuyer-checkbox" value="' + sb.id + '" data-name="' + self.escapeHtml(sb.name) + '" ' + checked + '>';
+                            html += '<input type="checkbox" class="subbuyer-checkbox" value="' + sb.id + '" data-name="' + self.escapeHtml(sb.name) + '" ' + checked + ' ' + disabled + '>';
                             html += '<span class="checkbox-custom"></span>';
                             html += '<span class="checkbox-label">' + self.escapeHtml(sb.name) + '</span>';
                             html += '</label>';
                         });
                         $container.html(html);
-                        // Volvemos a adjuntar el evento de cambio después de que el HTML esté en el DOM
-                        $container.find('.subbuyer-checkbox').on('change', function () {
-                            self.actualizarSubBuyersSeleccionados();
-                        });
+                        
+                        if (self.puedeEditar) {
+                            $container.find('.subbuyer-checkbox').on('change', function () {
+                                self.actualizarSubBuyersSeleccionados();
+                            });
+                        }
                     } else {
                         $container.html('<div class="subbuyers-no-options"><i class="fas fa-info-circle"></i> No hay sub buyers disponibles</div>');
                     }
@@ -387,16 +566,17 @@ define('inventario:views/propiedad', [
         },
 
         actualizarSubBuyersSeleccionados: function () {
-            var self = this;
-            // Usamos un array temporal para evitar problemas de contexto
+            if (!this.puedeEditar) return;
+            
             var seleccionados = [];
-            // Aseguramos que los elementos existen antes de iterar
+            
             this.$el.find('.subbuyer-checkbox:checked').each(function () {
                 var valor = $(this).val();
                 if (valor !== undefined && valor !== null) {
                     seleccionados.push(valor);
                 }
             });
+            
             this.subBuyersSeleccionados = seleccionados;
         },
 
@@ -408,7 +588,7 @@ define('inventario:views/propiedad', [
                 .then(function (response) {
                     if (response.success && response.data) {
                         self.subBuyersSeleccionados = response.data.map(function (sb) { return sb.id; });
-                        // Usamos un setTimeout para asegurar que el DOM se haya actualizado
+                        
                         setTimeout(function() {
                             self.subBuyersSeleccionados.forEach(function (sbId) {
                                 self.$el.find('.subbuyer-checkbox[value="' + sbId + '"]').prop('checked', true);
@@ -417,7 +597,6 @@ define('inventario:views/propiedad', [
                     }
                 });
         },
-
 
         obtenerSubBuyersSeleccionados: function () {
             var seleccionados = [];
@@ -523,9 +702,9 @@ define('inventario:views/propiedad', [
             });
         },
 
-        // ========== UI RECAUDOS ==========
-
         manejarAgregarRecaudo: function (e) {
+            if (!this.puedeEditar) return;
+            
             var $btn      = $(e.currentTarget);
             var tipo      = $btn.data('tipo');
             var $select   = this.$el.find('#select-agregar-' + tipo);
@@ -536,6 +715,8 @@ define('inventario:views/propiedad', [
         },
 
         agregarRecaudo: function (campoId, recaudoId) {
+            if (!this.puedeEditar) return;
+            
             recaudoId = String(recaudoId);
             var lista = this.obtenerListaActual(campoId);
             if (this.recaudoEstaEnMostrados(lista, recaudoId)) { Espo.Ui.warning('Ya está en la lista'); return; }
@@ -550,6 +731,8 @@ define('inventario:views/propiedad', [
         },
 
         manejarEliminacionRecaudo: function (e) {
+            if (!this.puedeEditar) return;
+            
             var $t        = $(e.currentTarget);
             var recaudoId = String($t.data('recaudo-id'));
             var campoId   = $t.data('campo-id');
@@ -558,6 +741,8 @@ define('inventario:views/propiedad', [
         },
 
         eliminarRecaudo: function (campoId, recaudoId) {
+            if (!this.puedeEditar) return;
+            
             recaudoId = String(recaudoId);
             var lista = this.obtenerListaActual(campoId);
             var idx   = lista.mostrados.findIndex(function (r) { return String(r.id) === recaudoId; });
@@ -572,19 +757,56 @@ define('inventario:views/propiedad', [
         },
 
         onRecaudoCreado: function (data) {
+            if (!this.puedeEditar) return;
+            
+            console.log('🔍 onRecaudoCreado - data:', data);
+            
             var tipo      = data.tipo;
             var recaudoId = String(data.recaudoId);
             var lista     = this.obtenerListaActual(tipo);
-            if (this.recaudoEstaEnMostrados(lista, recaudoId) || this.recaudoEstaEnDisponibles(lista, recaudoId)) return;
-            lista.mostrados.push({ id: recaudoId, name: data.recaudoNombre, descripcion: '', default: false, tipo: data.recaudoTipo, estado: 'Modificar/No Tiene' });
+            
+            // Verificar si ya existe en mostrados o disponibles
+            if (this.recaudoEstaEnMostrados(lista, recaudoId) || this.recaudoEstaEnDisponibles(lista, recaudoId)) {
+                console.log('🔍 Recaudo ya existe en la lista');
+                return;
+            }
+            
+            // Crear el objeto del nuevo recaudo con estado por defecto "Modificar/No Tiene"
+            var nuevoRecaudo = { 
+                id: recaudoId, 
+                name: data.recaudoNombre, 
+                descripcion: '', 
+                default: false, 
+                tipo: data.recaudoTipo, 
+                estado: 'Modificar/No Tiene' // Estado por defecto (rojo)
+            };
+            
+            // Agregar a mostrados
+            lista.mostrados.push(nuevoRecaudo);
             lista.esPorDefecto = false;
+            
+            // Actualizar UI
             var tp = tipo === 'legal' ? this.$el.find('#tipoPersona').val().toLowerCase() : null;
             this.actualizarVistaRecaudos(tipo, tp, lista);
             this.actualizarDropdownRecaudos(tipo, lista.disponibles);
+            
+            // Actualizar los valores de recaudos con el estado por defecto
+            if (tipo === 'legal') {
+                this.valoresRecaudosLegal[recaudoId] = 'Modificar/No Tiene';
+            } else if (tipo === 'mercadeo') {
+                this.valoresRecaudosMercadeo[recaudoId] = 'Modificar/No Tiene';
+            } else if (tipo === 'apoderado') {
+                this.valoresRecaudosApoderado[recaudoId] = 'Modificar/No Tiene';
+            }
+            
+            // Auto-seleccionar la opción roja
+            setTimeout(function() {
+                this.$el.find('[data-recaudo-id="' + recaudoId + '"][data-campo-id="' + tipo + '"][data-valor="Modificar/No Tiene"]')
+                    .addClass('selected');
+            }.bind(this), 100);
+            
             Espo.Ui.success('Recaudo creado y agregado');
         },
-
-        // ========== UTILIDADES ==========
 
         obtenerListaActual: function (campoId) {
             if (campoId === 'legal') {
@@ -595,8 +817,13 @@ define('inventario:views/propiedad', [
             return this.listasRecaudos[campoId];
         },
 
-        recaudoEstaEnMostrados:   function (lista, id) { return lista.mostrados.some(function (r)  { return String(r.id) === String(id); }); },
-        recaudoEstaEnDisponibles: function (lista, id) { return lista.disponibles.some(function (r) { return String(r.id) === String(id); }); },
+        recaudoEstaEnMostrados: function (lista, id) { 
+            return lista.mostrados.some(function (r) { return String(r.id) === String(id); }); 
+        },
+
+        recaudoEstaEnDisponibles: function (lista, id) { 
+            return lista.disponibles.some(function (r) { return String(r.id) === String(id); }); 
+        },
 
         eliminarValorRecaudo: function (campoId, recaudoId) {
             if (campoId === 'legal')     { delete this.valoresRecaudosLegal[recaudoId];     this.calcularNotasPorcentajes(); }
@@ -630,16 +857,22 @@ define('inventario:views/propiedad', [
             var $select = this.$el.find('#select-agregar-' + campoId);
             var $panel  = this.$el.find('#panel-agregar-' + campoId);
             if (!$select.length) return;
-            $select.empty().append('<option value="">Seleccione un elemento para agregar</option>');
-            if (!disponibles || disponibles.length === 0) {
-                $select.append('<option value="" disabled>No hay elementos disponibles</option>');
+            
+            if (this.puedeEditar) {
+                $select.empty().append('<option value="">Seleccione un elemento para agregar</option>');
+                if (!disponibles || disponibles.length === 0) {
+                    $select.append('<option value="" disabled>No hay elementos disponibles</option>');
+                } else {
+                    disponibles.forEach(function (r) {
+                        $select.append('<option value="' + r.id + '">' + r.name + '</option>');
+                    });
+                }
+                $select.append('<option value="crear_nuevo">+ Crear nuevo requisito</option>');
+                $panel.show();
             } else {
-                disponibles.forEach(function (r) {
-                    $select.append('<option value="' + r.id + '">' + r.name + '</option>');
-                });
+                $select.empty().append('<option value="">No disponible en modo lectura</option>');
+                $select.prop('disabled', true);
             }
-            $select.append('<option value="crear_nuevo">+ Crear nuevo requisito</option>');
-            $panel.show();
         },
 
         crearHTMLRecaudos: function (recaudos, campoId, esPorDefecto) {
@@ -671,10 +904,16 @@ define('inventario:views/propiedad', [
                     : [{ valor: 'Adecuado', clase: 'color-verde' }, { valor: 'Revisar', clase: 'color-amarillo' }, { valor: 'Modificar/No Tiene', clase: 'color-rojo' }];
 
                 opciones.forEach(function (op) {
-                    html += '<td><div class="color-option ' + op.clase + '" data-action="selectRecaudoSemaforo" data-recaudo-id="' + id + '" data-campo-id="' + campoId + '" data-valor="' + op.valor + '"></div></td>';
+                    var disabledAttr = !self.puedeEditar ? ' style="opacity:0.5; cursor:not-allowed;"' : '';
+                    var actionAttr = self.puedeEditar ? ' data-action="selectRecaudoSemaforo"' : '';
+                    html += '<td><div class="color-option ' + op.clase + '"' + actionAttr + ' data-recaudo-id="' + id + '" data-campo-id="' + campoId + '" data-valor="' + op.valor + '"' + disabledAttr + '></div></td>';
                 });
 
-                html += '<td><button class="btn-eliminar-recaudo" data-action="eliminarRecaudo" data-recaudo-id="' + id + '" data-campo-id="' + campoId + '"><i class="fas fa-minus-circle"></i></button></td>';
+                if (self.puedeEditar) {
+                    html += '<td><button class="btn-eliminar-recaudo" data-action="eliminarRecaudo" data-recaudo-id="' + id + '" data-campo-id="' + campoId + '"><i class="fas fa-minus-circle"></i></button></td>';
+                } else {
+                    html += '<td></td>';
+                }
                 html += '</tr>';
             });
 
@@ -682,9 +921,9 @@ define('inventario:views/propiedad', [
             return html;
         },
 
-        // ========== PANEL OTROS ==========
-
         manejarCambioSelectOtros: function (e) {
+            if (!this.puedeEditar) return;
+            
             var $s    = $(e.currentTarget);
             var campo = $s.data('campo');
             var valor = $s.val();
@@ -713,9 +952,9 @@ define('inventario:views/propiedad', [
             }.bind(this));
         },
 
-        // ========== CÁLCULOS ==========
-
         seleccionarRecaudoSemaforo: function (e) {
+            if (!this.puedeEditar) return;
+            
             var $t        = $(e.currentTarget);
             var recaudoId = $t.data('recaudo-id');
             var campoId   = $t.data('campo-id');
@@ -732,6 +971,8 @@ define('inventario:views/propiedad', [
         },
 
         calcularNotasPorcentajes: function () {
+            if (!this.puedeEditar) return;
+            
             this.calcularPorcentajeLegal();
             this.calcularPorcentajeMercadeo();
             this.calcularEstatusPropiedad();
@@ -758,9 +999,6 @@ define('inventario:views/propiedad', [
         },
 
         calcularEstatusPropiedad: function () {
-            // ── 1. Evaluar cada uno de los 5 indicadores ──────────────────
-
-            // Legal: % de recaudos en Adecuado
             var legalLista = this.obtenerListaActual('legal');
             var lComp = legalLista.mostrados.filter(function (r) {
                 return this.valoresRecaudosLegal[r.id] === 'Adecuado';
@@ -769,7 +1007,6 @@ define('inventario:views/propiedad', [
                 ? Math.round((lComp / legalLista.mostrados.length) * 100) : 0;
             var estLegal = lPct >= 90 ? 'Verde' : (lPct >= 70 ? 'Amarillo' : 'Rojo');
 
-            // Mercadeo: % de recaudos en Adecuado
             var mLista = this.listasRecaudos.mercadeo;
             var mComp = mLista.mostrados.filter(function (r) {
                 return this.valoresRecaudosMercadeo[r.id] === 'Adecuado';
@@ -778,37 +1015,26 @@ define('inventario:views/propiedad', [
                 ? Math.round((mComp / mLista.mostrados.length) * 100) : 0;
             var estMercadeo = mPct >= 90 ? 'Verde' : (mPct >= 70 ? 'Amarillo' : 'Rojo');
 
-            // Precio
             var precio = this.$el.find('#select-precio').val();
             var estPrecio = precio === 'En rango'
                 ? 'Verde'
                 : (precio === 'Cercano al rango de precio' ? 'Amarillo' : 'Rojo');
 
-            // Exclusividad
             var excl = this.$el.find('#select-exclusividad').val();
             var estExclusiva = excl === 'Exclusividad pura o total con contrato firmado'
                 ? 'Verde'
                 : (excl === 'Exclusividad interna de CENTURY con contrato firmado' ? 'Amarillo' : 'Rojo');
 
-            // Ubicación
             var ubic = this.$el.find('#select-ubicacion').val();
             var estUbicacion = ubic === 'Ubicación atractiva'
                 ? 'Verde'
                 : (ubic === 'Ubicación medianamente atractiva' ? 'Amarillo' : 'Rojo');
 
-            // ── 2. Contar verdes / amarillos / rojos ───────────────────────
             var items     = [estLegal, estMercadeo, estPrecio, estExclusiva, estUbicacion];
             var verdes    = items.filter(function (v) { return v === 'Verde';    }).length;
             var amarillos = items.filter(function (v) { return v === 'Amarillo'; }).length;
             var rojos     = items.filter(function (v) { return v === 'Rojo';     }).length;
 
-            // ── 3. Aplicar escala ──────────────────────────────────────────
-            // 5V            → Verde
-            // 4V            → Verde  (independientemente de A o R restante)
-            // 3V            → Amarillo
-            // 2V + 0R / 1R  → Amarillo
-            // 2V + 2R o 3R  → Rojo
-            // 0V o 1V       → Rojo
             var estatus;
             if (verdes >= 4) {
                 estatus = 'Verde';
@@ -817,7 +1043,6 @@ define('inventario:views/propiedad', [
             } else if (verdes === 2) {
                 estatus = rojos >= 2 ? 'Rojo' : 'Amarillo';
             } else {
-                // 0 o 1 verde → Rojo
                 estatus = 'Rojo';
             }
 
@@ -825,9 +1050,12 @@ define('inventario:views/propiedad', [
             return estatus;
         },
 
-        // ========== GUARDAR ==========
-
         guardarInventario: function () {
+            if (!this.puedeEditar) {
+                Espo.Ui.warning('No tiene permisos para guardar');
+                return;
+            }
+            
             if (!this.inventarioId) { Espo.Ui.error('No hay inventario para guardar'); return; }
 
             var estatusPropiedad = this.calcularEstatusPropiedad();
@@ -861,7 +1089,23 @@ define('inventario:views/propiedad', [
                 .then(function (response) {
                     if (response.success) {
                         Espo.Ui.success('Inventario guardado exitosamente');
-                        setTimeout(function () { window.location.reload(); }, 1000);
+                        setTimeout(function () {
+                            // Volver con filtros después de guardar
+                            var queryParams = [];
+                            
+                            if (self.filtrosRetorno.cla) queryParams.push('cla=' + encodeURIComponent(self.filtrosRetorno.cla));
+                            if (self.filtrosRetorno.oficina) queryParams.push('oficina=' + encodeURIComponent(self.filtrosRetorno.oficina));
+                            if (self.filtrosRetorno.asesor) queryParams.push('asesor=' + encodeURIComponent(self.filtrosRetorno.asesor));
+                            if (self.filtrosRetorno.fechaDesde) queryParams.push('fechaDesde=' + encodeURIComponent(self.filtrosRetorno.fechaDesde));
+                            if (self.filtrosRetorno.fechaHasta) queryParams.push('fechaHasta=' + encodeURIComponent(self.filtrosRetorno.fechaHasta));
+                            if (self.filtrosRetorno.estatus) queryParams.push('estatus=' + encodeURIComponent(self.filtrosRetorno.estatus));
+                            if (self.filtrosRetorno.pagina) queryParams.push('pagina=' + self.filtrosRetorno.pagina);
+                            
+                            var queryString = queryParams.length > 0 ? '?' + queryParams.join('&') : '';
+                            var ruta = '#InvLista' + queryString;
+                            
+                            self.getRouter().navigate(ruta, { trigger: true });
+                        }, 1000);
                     } else {
                         Espo.Ui.error(response.error || 'Error al guardar');
                         $btn.prop('disabled', false).html(orig);
@@ -884,6 +1128,7 @@ define('inventario:views/propiedad', [
         },
 
         mostrarModalCrearRecaudo: function (tipo) {
+            if (!this.puedeEditar) return;
             if (this.modalCrearRecaudo) this.modalCrearRecaudo.mostrar(tipo);
         },
 

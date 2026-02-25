@@ -45,22 +45,28 @@
             </div>
             <div class="panel-body">
                 <div class="row">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="info-item">
                             <div class="info-label">Tipo de Operación</div>
                             <div class="info-value" id="prop-tipoOperacion">-</div>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="info-item">
                             <div class="info-label">Tipo de Propiedad</div>
                             <div class="info-value" id="prop-tipoPropiedad">-</div>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="info-item">
                             <div class="info-label">Sub Tipo de Propiedad</div>
                             <div class="info-value" id="prop-subTipoPropiedad">-</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="info-item">
+                            <div class="info-label">Precio</div>
+                            <div class="info-value" id="prop-precio">-</div>
                         </div>
                     </div>
                 </div>
@@ -106,9 +112,7 @@
                     <div class="col-md-3">
                         <div class="info-item">
                             <div class="info-label">Estado</div>
-                            <div class="info-value">
-                                <span class="badge" id="prop-status">-</span>
-                            </div>
+                            <div class="info-value" id="prop-status">-</div>
                         </div>
                     </div>
                 </div>
@@ -349,8 +353,8 @@
 
         <!-- Botones de acción -->
         <div class="form-actions">
-            <button class="btn btn-default" data-action="cancelar">
-                <i class="fas fa-times"></i> Cancelar
+            <button class="btn btn-default" data-action="volver">
+                <i class="fas fa-times"></i> Volver
             </button>
             <button class="btn btn-primary" data-action="guardar">
                 <i class="fas fa-save"></i> Guardar Análisis de la Propiedad

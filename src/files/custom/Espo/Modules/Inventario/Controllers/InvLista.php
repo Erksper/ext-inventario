@@ -602,4 +602,43 @@ class InvLista extends Record
             ],
         ];
     }
+
+    public function getActionGetPropiedadTeams(Request $request): array
+    {
+        $propiedadId = $request->getQueryParam('propiedadId');
+        if (!$propiedadId) {
+            return ['success' => false, 'error' => 'propiedadId es requerido'];
+        }
+
+        $em = $this->getContainer()->get('entityManager');
+        $propiedad = $em->getEntityById('Propiedades', $propiedadId);
+        
+        if (!$propiedad) {
+            return ['success' => false, 'error' => 'Propiedad no encontrada'];
+        }
+
+        $oficinaId = null;
+        $asesorId = $propiedad->get('idAsesorExclusivaId');
+        
+        // Obtener la oficina de la propiedad (team que no empieza con CLA)
+        $teams = $em->getRelation($propiedad, 'teams')->find();
+        if ($teams) {
+            foreach ($teams as $team) {
+                $id = $team->getId();
+                if (strpos($id, 'CLA') !== 0) {
+                    $oficinaId = $id;
+                    break;
+                }
+            }
+        }
+
+        return [
+            'success' => true,
+            'data' => [
+                'propiedadId' => $propiedadId,
+                'oficinaId' => $oficinaId,
+                'asesorId' => $asesorId
+            ]
+        ];
+    }
 }

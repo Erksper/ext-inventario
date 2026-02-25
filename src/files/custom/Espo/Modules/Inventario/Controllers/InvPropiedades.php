@@ -87,6 +87,8 @@ class InvPropiedades extends Base
                     'tipoOperacion'   => $propiedad->get('tipoOperacion'),
                     'tipoPropiedad'   => $propiedad->get('tipoPropiedad'),
                     'subTipoPropiedad'=> $propiedad->get('subTipoPropiedad'),
+                    'precioEnContrato' => $propiedad->get('precioEnContrato'), // ← Verificar
+                    'monedaEnContrato' => $propiedad->get('monedaEnContrato'),
                     'm2C'             => $propiedad->get('m2C'),
                     'm2T'             => $propiedad->get('m2T'),
                     'ubicacion'       => $ubicacionTexto,
