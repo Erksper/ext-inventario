@@ -271,74 +271,75 @@ define('inventario:views/propiedad', [
             
             console.log('🔍 Buscando usuario con username "0"...');
             
-            // Posibles nombres de campo de imagen en la entidad User
-            var posiblesCamposImagen = ['cImagenId', 'cImageId', 'cImage', 'avatarId', 'avatar'];
-            
-            Espo.Ajax.getRequest('User', {
-                where: [
+            // Usar el método correcto de EspoCRM para buscar usuarios
+            this.getCollectionFactory().create('User', function (collection) {
+                collection.where = [
                     {
                         type: 'equals',
                         attribute: 'userName',
                         value: '0'
                     }
-                ],
-                // Solicitar campos adicionales explícitamente
-                select: 'id,name,' + posiblesCamposImagen.join(',')
-            })
-            .then(function (response) {
-                console.log('🔍 Respuesta de búsqueda de usuario:', response);
+                ];
+                collection.maxSize = 1;
                 
-                if (response.list && response.list.length > 0) {
-                    var user = response.list[0];
-                    console.log('🔍 Usuario encontrado:', user);
-                    console.log('🔍 Campos disponibles:', Object.keys(user));
+                collection.fetch().then(function () {
+                    console.log('🔍 Respuesta de búsqueda de usuario:', collection);
                     
-                    // Buscar el primer campo de imagen que tenga valor
-                    var imageId = null;
-                    for (var i = 0; i < posiblesCamposImagen.length; i++) {
-                        var campo = posiblesCamposImagen[i];
-                        if (user[campo]) {
-                            imageId = user[campo];
-                            console.log('🔍 Imagen encontrada en campo:', campo, 'con valor:', imageId);
-                            break;
-                        }
-                    }
-                    
-                    if (imageId) {
-                        // Construir URL absoluta para la imagen
-                        var baseUrl = window.location.origin + window.location.pathname.split('/').slice(0, -1).join('/');
-                        var imageUrl = baseUrl + '/?entryPoint=image&id=' + imageId + '&size=large';
-                        console.log('🔍 URL de la imagen:', imageUrl);
+                    if (collection.models && collection.models.length > 0) {
+                        var user = collection.models[0];
+                        var userData = user.attributes;
                         
-                        var $img = $('#subBuyerLogo');
-                        $img.attr('src', imageUrl)
-                            .off('error')
-                            .on('error', function() {
-                                console.log('❌ Error al cargar la imagen');
-                                $img.hide();
-                                $('#subBuyerLogoPlaceholder').show();
-                            })
-                            .on('load', function() {
-                                console.log('✅ Imagen cargada correctamente');
-                                $img.show();
-                                $('#subBuyerLogoPlaceholder').hide();
-                            });
+                        console.log('🔍 Usuario encontrado:', userData);
+                        console.log('🔍 Campos disponibles:', Object.keys(userData));
+                        
+                        // Posibles nombres de campo de imagen en la entidad User
+                        var posiblesCamposImagen = ['cImagenId', 'cImageId', 'cImage', 'avatarId', 'avatar'];
+                        var imageId = null;
+                        
+                        for (var i = 0; i < posiblesCamposImagen.length; i++) {
+                            var campo = posiblesCamposImagen[i];
+                            if (userData[campo]) {
+                                imageId = userData[campo];
+                                console.log('🔍 Imagen encontrada en campo:', campo, 'con valor:', imageId);
+                                break;
+                            }
+                        }
+                        
+                        if (imageId) {
+                            // Construir URL absoluta para la imagen usando entryPoint
+                            var baseUrl = window.location.origin + window.location.pathname.split('/').slice(0, -1).join('/');
+                            var imageUrl = baseUrl + '/?entryPoint=image&id=' + imageId + '&size=large';
+                            console.log('🔍 URL de la imagen:', imageUrl);
+                            
+                            var $img = $('#subBuyerLogo');
+                            $img.attr('src', imageUrl)
+                                .off('error')
+                                .on('error', function() {
+                                    console.log('❌ Error al cargar la imagen');
+                                    $img.hide();
+                                    $('#subBuyerLogoPlaceholder').show();
+                                })
+                                .on('load', function() {
+                                    console.log('✅ Imagen cargada correctamente');
+                                    $img.show();
+                                    $('#subBuyerLogoPlaceholder').hide();
+                                });
+                        } else {
+                            console.log('⚠️ El usuario no tiene imagen en ninguno de los campos probados');
+                            $('#subBuyerLogo').hide();
+                            $('#subBuyerLogoPlaceholder').show();
+                        }
                     } else {
-                        console.log('⚠️ El usuario no tiene imagen en ninguno de los campos probados');
+                        console.log('⚠️ No se encontró usuario con username "0"');
                         $('#subBuyerLogo').hide();
                         $('#subBuyerLogoPlaceholder').show();
                     }
-                } else {
-                    console.log('⚠️ No se encontró usuario con username "0"');
+                }.bind(this)).catch(function (error) {
+                    console.error('❌ Error en la búsqueda de usuario:', error);
                     $('#subBuyerLogo').hide();
                     $('#subBuyerLogoPlaceholder').show();
-                }
-            })
-            .catch(function (error) {
-                console.error('❌ Error en la petición AJAX:', error);
-                $('#subBuyerLogo').hide();
-                $('#subBuyerLogoPlaceholder').show();
-            });
+                });
+            }.bind(this));
         },
 
         descargarSubBuyerPDF: function (data, nombre) {
