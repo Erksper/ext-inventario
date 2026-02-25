@@ -23,10 +23,8 @@
                 "Juridico": "Jurídico"
             },
             "buyer": {
-                "Comprador": "Comprador",
-                "Vendedor": "Vendedor",
-                "Arrendador": "Arrendador",
-                "Arrendatario": "Arrendatario"
+                "Inquilino": "Inquilino",       
+                "Compradores": "Compradores"    
             },
             "precio": {
                 "Fuera del rango de precio": "Fuera del rango de precio",
@@ -71,14 +69,13 @@
         "fields": {
             "name": "Nombre",
             "buyer": "Tipo de Buyer",
-            "invPropiedades": "Propiedades"
+            "invPropiedades": "Propiedades",
+            "descripcionLarga": "Descripción Detallada"  
         },
         "options": {
             "buyer": {
-                "Comprador": "Comprador",
-                "Vendedor": "Vendedor",
-                "Arrendador": "Arrendador",
-                "Arrendatario": "Arrendatario"
+                "Inquilino": "Inquilino",        
+                "Compradores": "Compradores"     
             }
         },
         "links": {

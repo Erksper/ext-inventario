@@ -261,14 +261,39 @@ define('inventario:views/list', [
                     return;
                 }
 
-                // Si es Casa Nacional, cargar todos los CLAs normalmente
+                console.log('🔍 cargarFiltros - permisos:', p);
+                console.log('🔍 esCasaNacional:', p.esCasaNacional);
+
+                // ═══════════════════════════════════════════════════════════
+                // CORREGIDO: Casa Nacional NO debe tener filtros automáticos
+                // ═══════════════════════════════════════════════════════════
                 if (p.esCasaNacional) {
+                    console.log('✅ Casa Nacional - cargando todos los CLAs sin restricciones');
                     self.cargarTodosCLAs().then(resolve);
                     return;
                 }
 
                 // Si es Director/Gerente
                 if (p.esGerente || p.esDirector || p.esCoordinador) {
+                    console.log('🔍 Usuario es Gerente/Director - oficina:', p.oficinaUsuario);
+                    
+                    // ═══════════════════════════════════════════════════════════
+                    // NUEVO: Verificar si la oficina es la excluida (ID 1)
+                    // ═══════════════════════════════════════════════════════════
+                    if (p.oficinaUsuario === '1') {
+                        console.log('⚠️ Oficina Venezuela detectada - mostrando mensaje');
+                        var $oficina = self.$el.find('#filtro-oficina');
+                        $oficina.empty().append('<option value="">Oficina no disponible</option>');
+                        $oficina.prop('disabled', true);
+                        
+                        var $asesor = self.$el.find('#filtro-asesor');
+                        $asesor.empty().append('<option value="">Seleccione una oficina primero</option>');
+                        $asesor.prop('disabled', true);
+                        
+                        self.cargarTodosCLAs().then(resolve);
+                        return;
+                    }
+                    
                     self.filtros.oficina = p.oficinaUsuario;
                     
                     // Mostrar CLA bloqueado si tiene uno
@@ -298,6 +323,7 @@ define('inventario:views/list', [
 
                 // Si es Asesor (o tratado como asesor)
                 if (p.esAsesor) {
+                    console.log('🔍 Usuario es Asesor');
                     self.filtros.asesor = p.usuarioId;
                     
                     // Mostrar CLA bloqueado si tiene uno
@@ -364,14 +390,18 @@ define('inventario:views/list', [
                 var selectOficina = self.$el.find('#filtro-oficina');
                 var selectAsesor  = self.$el.find('#filtro-asesor');
 
-                selectOficina.html('<option value="">Cargando...</option>').prop('disabled', true);
-                selectAsesor.html('<option value="">Todos los asesores</option>').prop('disabled', true);
-
+                // ═══════════════════════════════════════════════════════════
+                // CORREGIDO: Si no hay CLA seleccionado, bloquear todo
+                // ═══════════════════════════════════════════════════════════
                 if (!claId) {
-                    selectOficina.html('<option value="">Seleccione un CLA primero</option>');
+                    selectOficina.html('<option value="">Seleccione un CLA primero</option>').prop('disabled', true);
+                    selectAsesor.html('<option value="">Seleccione una oficina primero</option>').prop('disabled', true);
                     resolve();
                     return;
                 }
+
+                selectOficina.html('<option value="">Cargando...</option>').prop('disabled', true);
+                selectAsesor.html('<option value="">Seleccione una oficina primero</option>').prop('disabled', true);
 
                 Espo.Ajax.getRequest('InvLista/action/getOficinasByCLA', { claId: claId })
                     .then(function (response) {
@@ -381,6 +411,7 @@ define('inventario:views/list', [
                         resolve();
                     })
                     .catch(function() {
+                        selectOficina.html('<option value="">Error al cargar</option>');
                         resolve();
                     });
             });
@@ -389,9 +420,16 @@ define('inventario:views/list', [
         poblarSelectOficinas: function (oficinas) {
             var select = this.$el.find('#filtro-oficina');
             select.empty().append('<option value="">Todas las oficinas</option>');
-            oficinas.forEach(function (o) {
-                select.append('<option value="' + o.id + '">' + o.name + '</option>');
-            });
+            
+            // ═══════════════════════════════════════════════════════════
+            // CORREGIDO: Excluir oficina "Venezuela" (ID 1)
+            // ═══════════════════════════════════════════════════════════
+            oficinas
+                .filter(function(o) { return o.id !== '1'; })
+                .forEach(function (o) {
+                    select.append('<option value="' + o.id + '">' + o.name + '</option>');
+                });
+            
             select.prop('disabled', false);
         },
 
@@ -399,14 +437,17 @@ define('inventario:views/list', [
             var self = this;
             return new Promise(function (resolve) {
                 var selectAsesor = self.$el.find('#filtro-asesor');
-                selectAsesor.html('<option value="">Cargando...</option>').prop('disabled', true);
 
+                // ═══════════════════════════════════════════════════════════
+                // CORREGIDO: Si no hay oficina seleccionada, bloquear asesor
+                // ═══════════════════════════════════════════════════════════
                 if (!oficinaId) {
-                    selectAsesor.html('<option value="">Todos los asesores</option>').prop('disabled', false);
+                    selectAsesor.html('<option value="">Seleccione una oficina primero</option>').prop('disabled', true);
                     resolve();
                     return;
                 }
 
+                selectAsesor.html('<option value="">Cargando...</option>').prop('disabled', true);
                 self.cargarAsesoresPorOficina(oficinaId).then(resolve);
             });
         },
@@ -463,6 +504,9 @@ define('inventario:views/list', [
                 return;
             }
 
+            console.log('🔍 cargarPropiedadesIniciales - permisos:', p);
+            console.log('🔍 filtros actuales:', this.filtros);
+
             // Aplicar filtros desde URL si existen
             if (this.filtros.cla) params.claId = this.filtros.cla;
             if (this.filtros.oficina) params.oficinaId = this.filtros.oficina;
@@ -471,17 +515,25 @@ define('inventario:views/list', [
             if (this.filtros.fechaHasta) params.fechaHasta = this.filtros.fechaHasta;
             if (this.filtros.estatus) params.estatus = this.filtros.estatus;
 
-            // Si no hay filtros manuales, aplicar filtros automáticos por rol
+            // ═══════════════════════════════════════════════════════════
+            // CORREGIDO: Casa Nacional no tiene filtros automáticos
+            // ═══════════════════════════════════════════════════════════
             if (!params.claId && !params.oficinaId && !params.asesorId) {
                 if (p.esCasaNacional) {
-                    // No añadir nada
+                    console.log('✅ Casa Nacional - sin filtros automáticos');
+                    // No añadir nada, se cargan todas
                 } else if (p.esGerente || p.esDirector || p.esCoordinador) {
-                    if (p.oficinaUsuario) params.oficinaId = p.oficinaUsuario;
+                    if (p.oficinaUsuario && p.oficinaUsuario !== '1') {
+                        console.log('🔍 Aplicando filtro automático de oficina:', p.oficinaUsuario);
+                        params.oficinaId = p.oficinaUsuario;
+                    }
                 } else if (p.esAsesor) {
+                    console.log('🔍 Aplicando filtro automático de asesor:', p.usuarioId);
                     params.asesorId = p.usuarioId;
                 }
             }
 
+            console.log('🔍 Parámetros finales para fetch:', params);
             this.fetchPropiedades(params);
         },
 
@@ -501,18 +553,29 @@ define('inventario:views/list', [
                 estatus:   estatus
             };
 
+            console.log('🔍 aplicarFiltros - filtros leídos del DOM:', this.filtros);
+
             // Respetar restricciones de rol
             var p = this.permisos;
             if (p) {
+                // ═══════════════════════════════════════════════════════════
+                // CORREGIDO: Casa Nacional NO debe tener restricciones
+                // ═══════════════════════════════════════════════════════════
                 if (p.esAsesor) {
                     this.filtros.asesor  = p.usuarioId;
                     this.filtros.cla     = null;
                     this.filtros.oficina = null;
                 } else if (p.esGerente || p.esDirector || p.esCoordinador) {
-                    this.filtros.oficina = p.oficinaUsuario;
-                    this.filtros.cla     = null;
+                    // Solo si NO es Casa Nacional
+                    if (!p.esCasaNacional) {
+                        this.filtros.oficina = p.oficinaUsuario;
+                        this.filtros.cla     = null;
+                    }
                 }
+                // Casa Nacional no toca los filtros
             }
+
+            console.log('🔍 aplicarFiltros - filtros después de restricciones:', this.filtros);
 
             this.paginacion.pagina = 1;
             
@@ -527,7 +590,7 @@ define('inventario:views/list', [
             this.$el.find('#filtro-oficina').val('').prop('disabled', true)
                 .html('<option value="">Seleccione un CLA primero</option>');
             this.$el.find('#filtro-asesor').val('').prop('disabled', true)
-                .html('<option value="">Todos los asesores</option>');
+                .html('<option value="">Seleccione una oficina primero</option>');
             this.$el.find('#filtro-fecha-desde').val('');
             this.$el.find('#filtro-fecha-hasta').val('');
             this.$el.find('#filtro-estatus').val('');

@@ -18,36 +18,39 @@ define('inventario:views/modules/modal-crear-recaudo', [], function () {
     };
 
     ModalCrearRecaudoManager.prototype.crearModalHTML = function () {
-        this.modalHtml = 
-            '<div class="modal fade" id="modalCrearRecaudo" tabindex="-1" role="dialog" aria-hidden="true">' +
-            '  <div class="modal-dialog" role="document">' +
-            '    <div class="modal-content">' +
-            '      <div class="modal-header">' +
-            '        <button type="button" class="close" data-dismiss="modal" aria-label="Close">' +
-            '          <span aria-hidden="true">&times;</span>' +
-            '        </button>' +
-            '        <h4 class="modal-title"><i class="fas fa-plus-circle"></i> <span id="modalTitulo">Crear Nuevo Recaudo</span></h4>' +
-            '      </div>' +
-            '      <div class="modal-body">' +
-            '        <div class="form-group">' +
-            '          <label>Nombre del Recaudo *</label>' +
-            '          <input type="text" id="nombreRecaudo" class="form-control" placeholder="Ingrese el nombre del recaudo">' +
-            '        </div>' +
-            '        <div class="form-group">' +
-            '          <label>Descripción</label>' +
-            '          <textarea id="descripcionRecaudo" class="form-control" rows="3" placeholder="Ingrese una descripción (opcional)"></textarea>' +
-            '        </div>' +
-            '        <input type="hidden" id="tipoRecaudoModal" value="">' +
-            '      </div>' +
-            '      <div class="modal-footer">' +
-            '        <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>' +
-            '        <button type="button" class="btn btn-primary" id="btnGuardarRecaudo">' +
-            '          <i class="fas fa-save"></i> Guardar Recaudo' +
-            '        </button>' +
-            '      </div>' +
-            '    </div>' +
-            '  </div>' +
-            '</div>';
+        this.modalHtml = `
+            <div class="modal fade" id="modalCrearRecaudo" tabindex="-1" role="dialog" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header" style="background: linear-gradient(135deg, #B8A279 0%, #D4C19C 100%); color: white; position: relative; padding: 15px 20px; border-bottom: none;">
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="position: absolute; right: 15px; top: 15px; color: white; opacity: 0.8; font-size: 28px; font-weight: 300; line-height: 1; background: transparent; border: 0; z-index: 10; padding: 0; margin: 0; width: auto; height: auto; text-shadow: none;">
+                                <span aria-hidden="true" style="display: inline-block; line-height: 1;">&times;</span>
+                            </button>
+                            <h4 class="modal-title" style="margin: 0; line-height: 1.5; font-size: 18px;">
+                                <i class="fas fa-plus-circle"></i> <span id="modalTitulo">Crear Nuevo Recaudo</span>
+                            </h4>
+                        </div>
+                        <div class="modal-body" style="padding: 20px;">
+                            <div class="form-group">
+                                <label>Nombre del Recaudo *</label>
+                                <input type="text" id="nombreRecaudo" class="form-control" placeholder="Ingrese el nombre del recaudo">
+                            </div>
+                            <div class="form-group">
+                                <label>Descripción</label>
+                                <textarea id="descripcionRecaudo" class="form-control" rows="3" placeholder="Ingrese una descripción (opcional)"></textarea>
+                            </div>
+                            <input type="hidden" id="tipoRecaudoModal" value="">
+                        </div>
+                        <div class="modal-footer" style="border-top: 1px solid #e0e0e0; padding: 15px;">
+                            <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-primary" id="btnGuardarRecaudo">
+                                <i class="fas fa-save"></i> Guardar Recaudo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
     };
 
     ModalCrearRecaudoManager.prototype.agregarModalAlDOM = function () {

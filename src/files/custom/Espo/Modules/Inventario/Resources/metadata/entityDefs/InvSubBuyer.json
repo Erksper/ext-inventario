@@ -8,9 +8,16 @@
         },
         "buyer": {
             "type": "enum",
-            "options": ["Comprador", "Vendedor", "Arrendador", "Arrendatario"],
-            "default": "Comprador",
+            "options": ["Inquilino", "Compradores"],  
+            "default": "Compradores",
             "required": true
+        },
+        "descripcionLarga": {                         
+            "type": "text",
+            "rows": 20,
+            "required": false,
+            "isHtml": true,
+            "view": "views/fields/wysiwyg"
         },
         "deleted": {
             "type": "bool",

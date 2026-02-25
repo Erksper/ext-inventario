@@ -77,6 +77,20 @@ define('inventario:views/propiedad', [
                 if (!this.puedeEditar) return;
                 e.preventDefault();
                 this.manejarAgregarRecaudo(e);
+            },
+            'click [data-action="showSubBuyerInfo"]': function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.mostrarInfoSubBuyer(e);
+            },
+            'click .subbuyer-checkbox-option .checkbox-label': function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var $label = $(e.currentTarget);
+                var $checkbox = $label.closest('.subbuyer-checkbox-option').find('.subbuyer-checkbox');
+                var subBuyerId = $checkbox.val();
+                var subBuyerName = $label.text();
+                this.cargarInfoSubBuyer(subBuyerId, subBuyerName);
             }
         },
 
@@ -125,6 +139,371 @@ define('inventario:views/propiedad', [
 
             // Primero cargar permisos, luego los datos
             this.cargarPermisosYValidarAcceso();
+        },
+
+        mostrarInfoSubBuyer: function (e) {
+            var $target = $(e.currentTarget);
+            // Si el clic fue en el ícono de info, buscar el primer sub-buyer seleccionado
+            if ($target.hasClass('info-icon-sub-buyer')) {
+                var $selectedCheckbox = this.$el.find('.subbuyer-checkbox:checked').first();
+                if ($selectedCheckbox.length) {
+                    var subBuyerId = $selectedCheckbox.val();
+                    var subBuyerName = $selectedCheckbox.data('name');
+                    this.cargarInfoSubBuyer(subBuyerId, subBuyerName);
+                } else {
+                    Espo.Ui.warning('Seleccione un Sub Buyer primero');
+                }
+                return;
+            }
+        },
+
+        cargarInfoSubBuyer: function (subBuyerId, subBuyerName) {
+            var self = this;
+            
+            Espo.Ui.notify('Cargando información...', 'info');
+            
+            // Cargar datos del Sub Buyer
+            Espo.Ajax.getRequest('InvSubBuyer/' + subBuyerId, {})
+                .then(function (response) {
+                    Espo.Ui.notify(false); // Ocultar notificación
+                    
+                    if (!response || !response.id) {
+                        Espo.Ui.error('No se pudo cargar la información del Sub Buyer');
+                        return;
+                    }
+                    
+                    self.mostrarModalSubBuyer(response, subBuyerName);
+                })
+                .catch(function (error) {
+                    Espo.Ui.notify(false);
+                    console.error('Error cargando Sub Buyer:', error);
+                    Espo.Ui.error('Error al cargar la información');
+                });
+        },
+
+        mostrarModalSubBuyer: function (data, subBuyerName) {
+            var $modal = $('#subBuyerInfoModal');
+            var self = this;
+            
+            // Si el modal no existe, crearlo
+            if ($modal.length === 0) {
+                this.crearModalSubBuyer();
+                $modal = $('#subBuyerInfoModal');
+            }
+            
+            // Actualizar título
+            $('#subBuyerModalTitle').text(subBuyerName || data.name);
+            $('#subBuyerModalName').text(data.name);
+            
+            // ═══════════════════════════════════════════════════════════
+            // CORREGIDO: Solo mostrar el texto sin etiqueta adicional
+            // ═══════════════════════════════════════════════════════════
+            var buyerTexto = data.buyer === 'Inquilino' ? 'Inquilino' : 'Compradores';
+            $('#subBuyerModalType').html('<strong>Buyer Persona:</strong> ' + buyerTexto);
+            
+            // Actualizar descripción
+            var descripcion = data.descripcionLarga || 
+                            '<p style="color: #999; text-align: center; padding: 40px;">No hay información detallada disponible para este Sub Buyer.</p>';
+            $('#subBuyerModalDescription').html(descripcion);
+            
+            // Cargar logo (desde usuario "0")
+            this.cargarLogoSubBuyer();
+            
+            // Mostrar botón PDF si hay descripción larga
+            if (data.descripcionLarga) {
+                $('#downloadSubBuyerPDF').show().off('click').on('click', function () {
+                    self.descargarSubBuyerPDF(data, subBuyerName || data.name);
+                });
+            } else {
+                $('#downloadSubBuyerPDF').hide();
+            }
+            
+            $modal.modal('show');
+        },
+
+        crearModalSubBuyer: function () {
+            var modalHtml = `
+                <div class="modal fade" id="subBuyerInfoModal" tabindex="-1" role="dialog" aria-hidden="true">
+                    <div class="modal-dialog modal-lg" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header" style="background: linear-gradient(135deg, #B8A279 0%, #D4C19C 100%); color: white; position: relative; padding: 15px 20px; border-bottom: none;">
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="position: absolute; right: 15px; top: 15px; color: white; opacity: 0.8; font-size: 28px; font-weight: 300; line-height: 1; background: transparent; border: 0; z-index: 10; padding: 0; margin: 0; width: auto; height: auto; text-shadow: none;">
+                                    <span aria-hidden="true" style="display: inline-block; line-height: 1;">&times;</span>
+                                </button>
+                                <h4 class="modal-title" style="margin: 0; line-height: 1.5; font-size: 18px;">
+                                    <i class="fas fa-info-circle"></i> 
+                                    <span id="subBuyerModalTitle">Información del Sub Buyer</span>
+                                </h4>
+                            </div>
+                            <div class="modal-body" style="padding: 20px;">
+                                <div class="row">
+                                    <div class="col-md-3 text-center">
+                                        <div id="subBuyerLogoContainer" style="margin-bottom: 20px; min-height: 150px; display: flex; align-items: center; justify-content: center;">
+                                            <img id="subBuyerLogo" src="" alt="Logo" style="max-width: 150px; max-height: 150px; display: none; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                                            <div id="subBuyerLogoPlaceholder" style="width: 150px; height: 150px; background: #f5f5f5; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto; border: 1px solid #e0e0e0;">
+                                                <i class="fas fa-building" style="font-size: 48px; color: #B8A279;"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-9">
+                                        <h3 id="subBuyerModalName" style="margin-top: 0; color: #B8A279; font-weight: 600; font-size: 20px;"></h3>
+                                        <p id="subBuyerModalType" style="margin-bottom: 15px;"></p>
+                                        <hr style="margin: 15px 0; border: 0; border-top: 2px solid #B8A279;">
+                                        <div id="subBuyerModalDescription" style="max-height: 400px; overflow-y: auto; padding-right: 15px; line-height: 1.6; color: #333;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer" style="border-top: 1px solid #e0e0e0; padding: 15px;">
+                                <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
+                                <button type="button" class="btn btn-primary" id="downloadSubBuyerPDF" style="display: none;">
+                                    <i class="fas fa-file-pdf"></i> Descargar PDF
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            $('body').append(modalHtml);
+        },
+
+        cargarLogoSubBuyer: function () {
+            var self = this;
+            
+            console.log('🔍 Buscando usuario con username "0"...');
+            
+            // Posibles nombres de campo de imagen en la entidad User
+            var posiblesCamposImagen = ['cImagenId', 'cImageId', 'cImage', 'avatarId', 'avatar'];
+            
+            Espo.Ajax.getRequest('User', {
+                where: [
+                    {
+                        type: 'equals',
+                        attribute: 'userName',
+                        value: '0'
+                    }
+                ],
+                // Solicitar campos adicionales explícitamente
+                select: 'id,name,' + posiblesCamposImagen.join(',')
+            })
+            .then(function (response) {
+                console.log('🔍 Respuesta de búsqueda de usuario:', response);
+                
+                if (response.list && response.list.length > 0) {
+                    var user = response.list[0];
+                    console.log('🔍 Usuario encontrado:', user);
+                    console.log('🔍 Campos disponibles:', Object.keys(user));
+                    
+                    // Buscar el primer campo de imagen que tenga valor
+                    var imageId = null;
+                    for (var i = 0; i < posiblesCamposImagen.length; i++) {
+                        var campo = posiblesCamposImagen[i];
+                        if (user[campo]) {
+                            imageId = user[campo];
+                            console.log('🔍 Imagen encontrada en campo:', campo, 'con valor:', imageId);
+                            break;
+                        }
+                    }
+                    
+                    if (imageId) {
+                        // Construir URL absoluta para la imagen
+                        var baseUrl = window.location.origin + window.location.pathname.split('/').slice(0, -1).join('/');
+                        var imageUrl = baseUrl + '/?entryPoint=image&id=' + imageId + '&size=large';
+                        console.log('🔍 URL de la imagen:', imageUrl);
+                        
+                        var $img = $('#subBuyerLogo');
+                        $img.attr('src', imageUrl)
+                            .off('error')
+                            .on('error', function() {
+                                console.log('❌ Error al cargar la imagen');
+                                $img.hide();
+                                $('#subBuyerLogoPlaceholder').show();
+                            })
+                            .on('load', function() {
+                                console.log('✅ Imagen cargada correctamente');
+                                $img.show();
+                                $('#subBuyerLogoPlaceholder').hide();
+                            });
+                    } else {
+                        console.log('⚠️ El usuario no tiene imagen en ninguno de los campos probados');
+                        $('#subBuyerLogo').hide();
+                        $('#subBuyerLogoPlaceholder').show();
+                    }
+                } else {
+                    console.log('⚠️ No se encontró usuario con username "0"');
+                    $('#subBuyerLogo').hide();
+                    $('#subBuyerLogoPlaceholder').show();
+                }
+            })
+            .catch(function (error) {
+                console.error('❌ Error en la petición AJAX:', error);
+                $('#subBuyerLogo').hide();
+                $('#subBuyerLogoPlaceholder').show();
+            });
+        },
+
+        descargarSubBuyerPDF: function (data, nombre) {
+            var self = this;
+            
+            // Obtener la URL del logo
+            var $logoImg = $('#subBuyerLogo');
+            var logoSrc = $logoImg.is(':visible') ? $logoImg.attr('src') : null;
+            
+            // Mostrar indicador de carga
+            Espo.Ui.notify('Generando PDF...', 'info');
+            
+            // Crear un canvas para convertir la imagen a base64 si existe
+            if (logoSrc) {
+                var img = new Image();
+                img.crossOrigin = 'Anonymous';
+                img.onload = function() {
+                    var canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    var ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    var logoBase64 = canvas.toDataURL('image/png');
+                    Espo.Ui.notify(false); // Ocultar notificación
+                    self.generarPDF(data, nombre, logoBase64);
+                };
+                img.onerror = function() {
+                    Espo.Ui.notify(false);
+                    self.generarPDF(data, nombre, null);
+                };
+                img.src = logoSrc;
+            } else {
+                Espo.Ui.notify(false);
+                this.generarPDF(data, nombre, null);
+            }
+        },
+
+        generarPDF: function (data, nombre, logoBase64) {
+            console.log('🔍 Iniciando generarPDF');
+            
+            // Determinar el texto del Buyer Persona
+            var buyerTexto = data.buyer === 'Inquilino' ? 'Inquilino' : 'Compradores';
+            
+            // Crear contenido HTML para el PDF
+            var logoHtml = logoBase64 ? 
+                `<div style="text-align: center; margin-bottom: 30px;">
+                    <img src="${logoBase64}" alt="Century21 Logo" style="max-width: 150px; max-height: 80px;">
+                </div>` : 
+                `<div style="text-align: center; margin-bottom: 30px;">
+                    <div style="width: 150px; height: 80px; background: #f5f5f5; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #e0e0e0;">
+                        <span style="color: #B8A279; font-size: 24px; font-weight: bold;">CENTURY 21</span>
+                    </div>
+                </div>`;
+            
+            var contenido = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>${this.escapeHtml(nombre)} - Perfil de Sub Buyer</title>
+                    <style>
+                        body {
+                            font-family: Arial, sans-serif;
+                            margin: 40px;
+                            color: #333;
+                            line-height: 1.6;
+                        }
+                        .header {
+                            text-align: center;
+                            margin-bottom: 30px;
+                            padding-bottom: 20px;
+                            border-bottom: 3px solid #B8A279;
+                        }
+                        h1 {
+                            color: #B8A279;
+                            font-size: 28px;
+                            margin: 20px 0 10px 0;
+                        }
+                        .buyer-persona {
+                            color: #666;
+                            font-size: 16px;
+                            margin-bottom: 30px;
+                        }
+                        h2 {
+                            color: #B8A279;
+                            font-size: 20px;
+                            margin: 25px 0 15px 0;
+                            padding-bottom: 8px;
+                            border-bottom: 2px solid #e0e0e0;
+                        }
+                        h3 {
+                            color: #666;
+                            font-size: 16px;
+                            margin: 15px 0 10px 0;
+                            font-weight: bold;
+                        }
+                        ul {
+                            margin: 10px 0 20px 20px;
+                            padding: 0;
+                        }
+                        li {
+                            margin-bottom: 8px;
+                        }
+                        strong {
+                            color: #B8A279;
+                        }
+                        .footer {
+                            margin-top: 40px;
+                            padding-top: 20px;
+                            border-top: 2px solid #e0e0e0;
+                            text-align: center;
+                            font-size: 12px;
+                            color: #999;
+                        }
+                        .contenido {
+                            max-width: 800px;
+                            margin: 0 auto;
+                        }
+                        @media print {
+                            body {
+                                margin: 0.5in;
+                            }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="contenido">
+                        ${logoHtml}
+                        
+                        <div class="header">
+                            <h1>${this.escapeHtml(nombre)}</h1>
+                            <p class="buyer-persona"><strong>Buyer Persona:</strong> ${buyerTexto}</p>
+                        </div>
+                        
+                        <div class="contenido-detalle">
+                            ${data.descripcionLarga || '<p style="text-align: center; color: #999;">No hay información detallada disponible.</p>'}
+                        </div>
+                        
+                        <div class="footer">
+                            <p>Documento generado por Century21 Venezuela - ${new Date().toLocaleDateString()}</p>
+                            <p>www.century21.com.ve</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `;
+            
+            // Crear un Blob con el contenido HTML
+            var blob = new Blob([contenido], { type: 'text/html' });
+            var url = URL.createObjectURL(blob);
+            
+            // Abrir en una nueva ventana (esto no viola CSP porque es una URL de objeto)
+            var ventana = window.open(url, '_blank');
+            
+            if (!ventana) {
+                Espo.Ui.error('Por favor, permita ventanas emergentes para este sitio');
+                return;
+            }
+            
+            // Liberar la URL después de un tiempo
+            setTimeout(function() {
+                URL.revokeObjectURL(url);
+            }, 1000);
+            
+            console.log('✅ Ventana abierta con URL de objeto');
         },
 
         // Parsear filtros de retorno desde la URL
@@ -483,7 +862,16 @@ define('inventario:views/propiedad', [
 
         mostrarInfoMercadeo: function () {
             var self = this;
-            var buyerPersona = this.inventarioData.buyerPersona || this.inventarioData.buyer || 'Comprador';
+            // ═══════════════════════════════════════════════════════════
+            // CORREGIDO: Valor por defecto "Compradores" y orden invertido
+            // ═══════════════════════════════════════════════════════════
+            var buyerPersona = this.inventarioData.buyerPersona || this.inventarioData.buyer || 'Compradores';
+            
+            // Validar que el valor sea uno de los permitidos
+            if (buyerPersona !== 'Compradores' && buyerPersona !== 'Inquilino') {
+                buyerPersona = 'Compradores';
+            }
+            
             this.$el.find('#buyerPersona').val(buyerPersona);
 
             this.cargarYMostrarRecaudosMercadeo()
@@ -543,19 +931,35 @@ define('inventario:views/propiedad', [
                         response.data.forEach(function (sb) {
                             var checked = self.subBuyersSeleccionados.includes(sb.id) ? 'checked' : '';
                             var disabled = !self.puedeEditar ? 'disabled' : '';
-                            html += '<label class="subbuyer-checkbox-option">';
+                            
+                            // ═══════════════════════════════════════════════════════════
+                            // CORREGIDO: Solo el ícono abre el modal, el nombre marca el checkbox
+                            // ═══════════════════════════════════════════════════════════
+                            html += '<label class="subbuyer-checkbox-option" data-subbuyer-id="' + sb.id + '">';
                             html += '<input type="checkbox" class="subbuyer-checkbox" value="' + sb.id + '" data-name="' + self.escapeHtml(sb.name) + '" ' + checked + ' ' + disabled + '>';
                             html += '<span class="checkbox-custom"></span>';
                             html += '<span class="checkbox-label">' + self.escapeHtml(sb.name) + '</span>';
+                            html += '<i class="fas fa-info-circle info-icon-sub-buyer-option" data-action="showSubBuyerInfo" data-subbuyer-id="' + sb.id + '" data-subbuyer-name="' + self.escapeHtml(sb.name) + '" style="margin-left: 10px; color: #B8A279; cursor: pointer;"></i>';
                             html += '</label>';
                         });
                         $container.html(html);
                         
+                        // Eventos para checkboxes (selección)
                         if (self.puedeEditar) {
                             $container.find('.subbuyer-checkbox').on('change', function () {
                                 self.actualizarSubBuyersSeleccionados();
                             });
                         }
+                        
+                        // Eventos solo para íconos de información
+                        $container.find('.info-icon-sub-buyer-option').on('click', function (e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            var subBuyerId = $(this).data('subbuyer-id');
+                            var subBuyerName = $(this).data('subbuyer-name');
+                            self.cargarInfoSubBuyer(subBuyerId, subBuyerName);
+                        });
+                        
                     } else {
                         $container.html('<div class="subbuyers-no-options"><i class="fas fa-info-circle"></i> No hay sub buyers disponibles</div>');
                     }
@@ -1139,21 +1543,44 @@ define('inventario:views/propiedad', [
 
             var modalId = 'infoRecaudoModal';
             var $modal  = $('#' + modalId);
+            
             if ($modal.length === 0) {
-                $('body').append(
-                    '<div class="modal fade" id="' + modalId + '" tabindex="-1" role="dialog">' +
-                    '<div class="modal-dialog modal-lg"><div class="modal-content">' +
-                    '<div class="modal-header"><button type="button" class="close" data-dismiss="modal">&times;</button>' +
-                    '<h4 class="modal-title"><i class="fas fa-info-circle"></i> Información del Recaudo</h4></div>' +
-                    '<div class="modal-body"><h5>Recaudo:</h5><p class="info-recaudo-texto"></p>' +
-                    '<h5>Descripción:</h5><div class="info-contenido-texto"></div></div>' +
-                    '<div class="modal-footer"><button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button></div>' +
-                    '</div></div></div>'
-                );
+                var modalHtml = `
+                    <div class="modal fade" id="${modalId}" tabindex="-1" role="dialog" aria-hidden="true">
+                        <div class="modal-dialog modal-lg" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header" style="background: linear-gradient(135deg, #B8A279 0%, #D4C19C 100%); color: white; position: relative; padding: 15px 20px; border-bottom: none;">
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="position: absolute; right: 15px; top: 15px; color: white; opacity: 0.8; font-size: 28px; font-weight: 300; line-height: 1; background: transparent; border: 0; z-index: 10; padding: 0; margin: 0; width: auto; height: auto; text-shadow: none;">
+                                        <span aria-hidden="true" style="display: inline-block; line-height: 1;">&times;</span>
+                                    </button>
+                                    <h4 class="modal-title" style="margin: 0; line-height: 1.5; font-size: 18px;">
+                                        <i class="fas fa-info-circle"></i> Información del Recaudo
+                                    </h4>
+                                </div>
+                                <div class="modal-body" style="padding: 20px;">
+                                    <div style="background-color: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #B8A279;">
+                                        <h5 style="color: #B8A279; font-weight: bold; margin: 0 0 10px 0; font-size: 14px; text-transform: uppercase;">Recaudo:</h5>
+                                        <p class="info-recaudo-texto" style="color: #333; font-size: 15px; margin: 0; line-height: 1.6;"></p>
+                                    </div>
+                                    <div style="padding: 15px; background-color: #fff; border: 1px solid #e0e0e0; border-radius: 6px;">
+                                        <h5 style="color: #495057; font-weight: bold; margin: 0 0 15px 0; font-size: 14px; text-transform: uppercase;">Descripción:</h5>
+                                        <div class="info-contenido-texto" style="color: #333; font-size: 14px; line-height: 1.8; white-space: pre-wrap; word-wrap: break-word;"></div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer" style="border-top: 1px solid #e0e0e0; padding: 15px;">
+                                    <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                $('body').append(modalHtml);
                 $modal = $('#' + modalId);
             }
+            
             $modal.find('.info-recaudo-texto').text(recaudoTexto);
             $modal.find('.info-contenido-texto').html(infoTexto.replace(/\n/g, '<br>'));
+            
             $modal.modal('show');
         },
 

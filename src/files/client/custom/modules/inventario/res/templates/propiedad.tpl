@@ -196,8 +196,8 @@
                             <label class="form-label">Buyer Persona</label>
                             <!-- Solo Comprador y Arrendatario, igual que entityDefs -->
                             <select id="buyerPersona" class="form-control">
-                                <option value="Comprador">Comprador</option>
-                                <option value="Arrendatario">Arrendatario</option>
+                                <option value="Compradores">Compradores</option> 
+                                <option value="Inquilino">Inquilino</option>                                       
                             </select>
                         </div>
                     </div>
@@ -205,7 +205,9 @@
                 <div class="row">
                     <div class="col-md-12">
                         <div class="form-group">
-                            <label class="form-label">Sub Buyer Persona</label>
+                            <label class="form-label">
+                                Sub Buyer Persona
+                            </label>
                             <div id="subbuyers-checkbox-container" class="subbuyers-checkbox-grid">
                                 <div class="text-center" style="padding: 20px; color: #999;">
                                     <i class="fas fa-spinner fa-spin"></i> Cargando opciones...
@@ -393,3 +395,116 @@
         </div>
     </div>
 </div>
+
+<!-- Modal para mostrar información detallada del Sub Buyer -->
+<div class="modal fade" id="subBuyerInfoModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #B8A279 0%, #D4C19C 100%); color: white;">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="color: white; opacity: 0.8;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title">
+                    <i class="fas fa-info-circle"></i> 
+                    <span id="subBuyerModalTitle">Información del Sub Buyer</span>
+                </h4>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-3 text-center">
+                        <div id="subBuyerLogoContainer">
+                            <img id="subBuyerLogo" src="" alt="Logo" style="max-width: 150px; max-height: 150px; display: none;">
+                            <div id="subBuyerLogoPlaceholder" style="width: 150px; height: 150px; background: #f5f5f5; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                                <i class="fas fa-building" style="font-size: 48px; color: #B8A279;"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-9">
+                        <h3 id="subBuyerModalName" style="margin-top: 0; color: #B8A279;"></h3>
+                        <p><span id="subBuyerModalType"></span></p>
+                        <hr>
+                        <div id="subBuyerModalDescription" style="max-height: 400px; overflow-y: auto; padding-right: 15px;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" id="downloadSubBuyerPDF" style="display: none;">
+                    <i class="fas fa-file-pdf"></i> Descargar PDF
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Corrección para todos los modales */
+.modal-header {
+    position: relative;
+    padding: 15px 20px !important;
+    border-bottom: none !important;
+}
+
+.modal-header .close {
+    position: absolute !important;
+    right: 15px !important;
+    top: 15px !important;
+    color: white !important;
+    opacity: 0.8 !important;
+    font-size: 28px !important;
+    font-weight: 300 !important;
+    line-height: 1 !important;
+    background: transparent !important;
+    border: 0 !important;
+    z-index: 10 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    text-shadow: none !important;
+}
+
+.modal-header .close span {
+    display: inline-block !important;
+    line-height: 1 !important;
+}
+
+.modal-header .close:hover {
+    opacity: 1 !important;
+    background: transparent !important;
+}
+
+.modal-title {
+    margin: 0 !important;
+    line-height: 1.5 !important;
+    font-size: 18px !important;
+    padding-right: 30px !important;
+}
+
+.modal-body {
+    padding: 20px !important;
+}
+
+.modal-footer {
+    border-top: 1px solid #e0e0e0 !important;
+    padding: 15px !important;
+}
+
+/* Para el modal de crear recaudo específicamente */
+#modalCrearRecaudo .modal-header {
+    background: linear-gradient(135deg, #B8A279 0%, #D4C19C 100%);
+    color: white;
+}
+
+/* Para el modal de info recaudo */
+#infoRecaudoModal .modal-header {
+    background: linear-gradient(135deg, #B8A279 0%, #D4C19C 100%);
+    color: white;
+}
+
+/* Para el modal de sub buyer */
+#subBuyerInfoModal .modal-header {
+    background: linear-gradient(135deg, #B8A279 0%, #D4C19C 100%);
+    color: white;
+}
+</style>
