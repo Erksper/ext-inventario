@@ -652,9 +652,30 @@ define('inventario:views/propiedad', [
         mostrarInfoPropiedad: function () {
             this.$el.find('#prop-id').text(this.propiedadData.id || '-');
 
-            this.$el.find('#prop-tipoOperacion').text(this.propiedadData.tipoOperacion  || '-');
-            this.$el.find('#prop-tipoPropiedad').text(this.propiedadData.tipoPropiedad  || '-');
-            this.$el.find('#prop-subTipoPropiedad').text(this.propiedadData.subTipoPropiedad || '-');
+            var tipoOperacion = this.propiedadData.tipoOperacion || '-';
+            var mapaTipoOperacion = {
+                'compartida': 'Compartida',
+                'otrosIngresos': 'Otros ingresos',
+                'referido': 'Referido',
+                'renta': 'Alquiler',
+                'venta': 'Venta'
+            };
+            tipoOperacion = mapaTipoOperacion[tipoOperacion] || tipoOperacion;
+            this.$el.find('#prop-tipoOperacion').text(tipoOperacion);
+
+            var tipoPropiedad = this.propiedadData.tipoPropiedad || '-';
+            if (tipoPropiedad.length > 0) {
+                tipoPropiedad = tipoPropiedad.charAt(0).toUpperCase() + tipoPropiedad.slice(1);
+            }
+            this.$el.find('#prop-tipoPropiedad').text(tipoPropiedad);
+            
+            var subTipoPropiedad = this.propiedadData.subTipoPropiedad || '-';
+            if (subTipoPropiedad.toLowerCase() === 'departamento') {
+                subTipoPropiedad = 'Apartamento';
+            } else if (subTipoPropiedad.length > 0) {
+                subTipoPropiedad = subTipoPropiedad.charAt(0).toUpperCase() + subTipoPropiedad.slice(1);
+            }
+            this.$el.find('#prop-subTipoPropiedad').text(subTipoPropiedad);
             
             var precioTexto = '-';
             if (this.propiedadData.precioEnContrato) {
@@ -675,7 +696,13 @@ define('inventario:views/propiedad', [
             
             this.$el.find('#prop-m2C').text(this.propiedadData.m2C ? this.propiedadData.m2C + ' m²' : '-');
             this.$el.find('#prop-m2T').text(this.propiedadData.m2T ? this.propiedadData.m2T + ' m²' : '-');
-            this.$el.find('#prop-ubicacion').text(this.propiedadData.ubicacion || '-');
+            
+            var ubicacion = this.propiedadData.ubicacion || '-';
+            if (ubicacion.length > 0) {
+                ubicacion = ubicacion.charAt(0).toUpperCase() + ubicacion.slice(1);
+            }
+            this.$el.find('#prop-ubicacion').text(ubicacion);
+            
             this.$el.find('#prop-asesor').text(this.propiedadData.asesorNombre || '-');
 
             if (this.propiedadData.fechaAlta) {
@@ -705,7 +732,7 @@ define('inventario:views/propiedad', [
 
             var $linkPublicoInline = this.$el.find('#prop-link-publico-inline');
             if (this.propiedadData.linkPublico) {
-                $linkPublicoInline.html('<a href="' + this.escapeHtml(this.propiedadData.linkPublico) + '" target="_blank" rel="noopener noreferrer" class="prop-button" title="Buscar propiedad">' +
+                $linkPublicoInline.html('<a href="' + this.escapeHtml(this.propiedadData.linkPublico) + '" target="_blank" rel="noopener noreferrer" class="prop-button publico" title="Buscar propiedad">' +
                     '<i class="fas fa-search"></i> Buscar propiedad</a>');
             } else {
                 $linkPublicoInline.html('');

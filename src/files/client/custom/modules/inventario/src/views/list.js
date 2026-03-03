@@ -439,7 +439,7 @@ define('inventario:views/list', [
             html += '<th class="col-dias">Días</th>';
             html += '<th style="min-width:180px;">Dirección</th>';
             html += '<th style="min-width:140px;">Asesor</th>';
-            html += '<th style="width:110px;">Tipo</th>';
+            html += '<th style="width:110px;">Tipo de propiedad</th>';
             html += '<th style="width:100px;">Operación</th>';
             html += '<th style="width:80px;text-align:center;">Estatus</th>';
             html += '<th style="width:100px;text-align:center;">Demanda</th>';
@@ -455,9 +455,27 @@ define('inventario:views/list', [
                 var dias     = self.calcularDias(prop.fechaAlta);
                 var partes   = [prop.calle, prop.numero, prop.urbanizacion].filter(Boolean);
                 var dir      = partes.join(' ') || '-';
+                if (dir.length > 0) {
+                    dir = dir.charAt(0).toUpperCase() + dir.slice(1);
+                }
                 var asesor   = prop.asesorNombre || '-';
                 var asesorSh = asesor.length > 22 ? asesor.substring(0, 20) + '…' : asesor;
                 var apoCellId = 'apo-' + prop.id;
+                
+                var tipoOperacion = prop.tipoOperacion || '-';
+                var mapaTipoOperacion = {
+                    'compartida': 'Compartida',
+                    'otrosIngresos': 'Otros ingresos',
+                    'referido': 'Referido',
+                    'renta': 'Alquiler',
+                    'venta': 'Venta'
+                };
+                tipoOperacion = mapaTipoOperacion[tipoOperacion] || tipoOperacion;
+                
+                var tipoPropiedad = prop.tipoPropiedad || '-';
+                if (tipoPropiedad.length > 0) {
+                    tipoPropiedad = tipoPropiedad.charAt(0).toUpperCase() + tipoPropiedad.slice(1);
+                }
 
                 html += '<tr data-id="' + prop.id + '">';
                 html += '<td class="col-num-cell">' + num + '</td>';
@@ -465,8 +483,8 @@ define('inventario:views/list', [
                 html += '<td class="td-dias" style="background:' + self.colorDias(dias) + ';">' + dias + '</td>';
                 html += '<td title="' + self.esc(dir) + '" class="td-ellipsis">' + self.esc(dir) + '</td>';
                 html += '<td title="' + self.esc(asesor) + '" class="td-ellipsis">' + self.esc(asesorSh) + '</td>';
-                html += '<td class="td-ellipsis">' + self.esc(prop.tipoPropiedad || '-') + '</td>';
-                html += '<td class="td-ellipsis">' + self.esc(prop.tipoOperacion || '-') + '</td>';
+                html += '<td class="td-ellipsis">' + self.esc(tipoPropiedad) + '</td>';
+                html += '<td class="td-ellipsis">' + self.esc(tipoOperacion) + '</td>';
                 html += '<td style="text-align:center;"><span class="badge-estado" style="background:' + self.colorEstatus(estatus) + ';">' + self.esc(estatus) + '</span></td>';
                 html += '<td style="text-align:center;"><span class="badge-estado" style="background:' + self.colorDemanda(demanda) + ';">' + self.esc(demanda) + '</span></td>';
 
