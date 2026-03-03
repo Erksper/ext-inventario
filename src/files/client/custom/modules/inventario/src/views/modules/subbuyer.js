@@ -9,7 +9,6 @@ define('inventario:views/modules/subbuyer', [], function () {
     SubBuyerManager.prototype.setupEventListeners = function () {
         var self = this;
         
-        // Cambio en buyer persona para cargar sub buyers
         this.view.$el.find('#buyerPersona').on('change', function (e) {
             var buyerSeleccionado = $(e.target).val();
             self.cargarSubBuyers(buyerSeleccionado);
@@ -19,7 +18,6 @@ define('inventario:views/modules/subbuyer', [], function () {
     SubBuyerManager.prototype.inicializar = function () {
         this.$select = this.view.$el.find('#subBuyerPersona');
         
-        // Verificar si ya hay un valor seleccionado
         var buyerInicial = this.view.$el.find('#buyerPersona').val();
         if (buyerInicial) {
             this.cargarSubBuyers(buyerInicial);
@@ -36,7 +34,6 @@ define('inventario:views/modules/subbuyer', [], function () {
         
         this.$select.html('<option value="">Cargando sub buyers...</option>');
         
-        // Hacer petición AJAX para obtener sub buyers
         Espo.Ajax.getRequest('InvPropiedades/action/getSubBuyers', { buyer: buyer })
             .then(function (response) {
                 if (response.success && response.data && response.data.length > 0) {
@@ -47,7 +44,6 @@ define('inventario:views/modules/subbuyer', [], function () {
                         self.$select.append('<option value="' + subBuyer.id + '">' + subBuyer.name + '</option>');
                     });
                     
-                    // Si ya había un sub buyer seleccionado, seleccionarlo
                     if (self.subBuyerSeleccionado) {
                         self.seleccionarSubBuyerPorValor(self.subBuyerSeleccionado);
                     }
@@ -56,7 +52,6 @@ define('inventario:views/modules/subbuyer', [], function () {
                 }
             }.bind(this))
             .catch(function (error) {
-                console.error('Error cargando sub buyers:', error);
                 self.$select.html('<option value="">Error al cargar sub buyers</option>');
             });
     };
@@ -64,7 +59,6 @@ define('inventario:views/modules/subbuyer', [], function () {
     SubBuyerManager.prototype.setValorInicial = function (valor) {
         this.subBuyerSeleccionado = valor;
         
-        // Si el select ya está cargado, seleccionar el valor
         if (this.$select && this.$select.find('option').length > 1) {
             this.seleccionarSubBuyerPorValor(valor);
         }
@@ -73,7 +67,6 @@ define('inventario:views/modules/subbuyer', [], function () {
     SubBuyerManager.prototype.seleccionarSubBuyerPorValor = function (valor) {
         if (!valor || !this.$select) return;
         
-        // Buscar la opción por texto (name)
         var $option = this.$select.find('option').filter(function () {
             return $(this).text() === valor;
         });

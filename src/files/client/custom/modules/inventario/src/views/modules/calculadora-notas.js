@@ -10,7 +10,6 @@ define('inventario:views/modules/calculadora-notas', [], function () {
             'mercadeo': 0
         };
         
-        // Legal: depende del tipo de persona
         var tipoPersona = this.view.$el.find('#tipoPersona').val();
         var valorLegal = '';
         
@@ -22,11 +21,9 @@ define('inventario:views/modules/calculadora-notas', [], function () {
         
         paneles.legal = this.calcularPorcentajeLegal(valorLegal);
         
-        // Mercadeo: múltiples campos
         var camposMercadeo = ['fotos', 'copy', 'video', 'videoInsertado', 'metricas', 'rotulo'];
         paneles.mercadeo = this.calcularPorcentajeMercadeo(camposMercadeo);
         
-        // Actualizar los porcentajes en la UI
         this.actualizarPorcentajesUI(paneles);
         
         return paneles;
@@ -35,7 +32,7 @@ define('inventario:views/modules/calculadora-notas', [], function () {
     CalculadoraNotas.prototype.calcularPorcentajeLegal = function (valorLegal) {
         if (valorLegal === 'Adecuado') return 100;
         if (valorLegal === 'Revisar') return 50;
-        return 0; // Modificar
+        return 0;
     };
 
     CalculadoraNotas.prototype.calcularPorcentajeMercadeo = function (campos) {
@@ -66,14 +63,12 @@ define('inventario:views/modules/calculadora-notas', [], function () {
             valores.push(valor || 'Modificar');
         }.bind(this));
         
-        // Determinar la peor nota (jerarquía: Modificar > Revisar > Adecuado)
         if (valores.includes('Modificar')) return 'Modificar';
         if (valores.includes('Revisar')) return 'Revisar';
         return 'Adecuado';
     };
 
     CalculadoraNotas.prototype.inicializarPorcentajes = function () {
-        // Calcular notas iniciales
         this.calcularNotas();
     };
 

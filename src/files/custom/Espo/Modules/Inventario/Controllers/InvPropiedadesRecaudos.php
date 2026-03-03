@@ -34,7 +34,6 @@ class InvPropiedadesRecaudos extends Record
                 ];
             }
             
-            // Marcar como eliminado
             $relacion->set('deleted', true);
             $entityManager->saveEntity($relacion);
             

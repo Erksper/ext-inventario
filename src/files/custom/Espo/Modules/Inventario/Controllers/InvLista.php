@@ -7,10 +7,6 @@ use Espo\Core\Api\Request;
 
 class InvLista extends Record
 {
-    // ═══════════════════════════════════════════════════════════
-    // USER INFO - CON JERARQUÍA CORREGIDA
-    // ═══════════════════════════════════════════════════════════
-
     public function getActionGetUserInfo(Request $request): array
     {
         $userId = $request->getQueryParam('userId');
@@ -30,7 +26,6 @@ class InvLista extends Record
         $oficinaUsuario = null;
         $oficinaNombre = null;
         
-        // Obtener teams del usuario
         $teams = $em->getRelation($user, 'teams')->find();
         if ($teams) {
             foreach ($teams as $team) {
@@ -42,8 +37,7 @@ class InvLista extends Record
                     $claUsuario = $id;
                     $claNombre = $name;
                 } else {
-                    // Es oficina (no empieza con CLA)
-                    if (!$oficinaUsuario) { // Tomar la primera oficina
+                    if (!$oficinaUsuario) {
                         $oficinaUsuario = $id;
                         $oficinaNombre = $name;
                     }
@@ -51,7 +45,6 @@ class InvLista extends Record
             }
         }
         
-        // Si no encontramos oficina en teams, probar con defaultTeam
         if (!$oficinaUsuario) {
             $dtId = $user->get('defaultTeamId');
             if ($dtId && strpos($dtId, 'CLA') !== 0) {
@@ -61,7 +54,6 @@ class InvLista extends Record
             }
         }
 
-        // Detectar roles con jerarquía
         $esCasaNacional = false;
         $esGerente = false;
         $esDirector = false;
@@ -87,9 +79,6 @@ class InvLista extends Record
         $tieneRolesGestion = !$tienePoderCasaNacional && ($esGerente || $esDirector || $esCoordinador);
         $esAsesorPuro = $user->get('type') === 'regular' && !$tieneRolesGestion && !$tienePoderCasaNacional;
 
-        // Log para debug
-        $GLOBALS['log']->info("InvLista::getUserInfo - Usuario: {$userId}, Nombre: " . $user->get('name') . ", CLA: {$claNombre} ({$claUsuario}), Oficina: {$oficinaNombre} ({$oficinaUsuario})");
-
         return ['success' => true, 'data' => [
             'usuarioId'       => $userId,
             'userType'        => $user->get('type'),
@@ -108,10 +97,6 @@ class InvLista extends Record
         ]];
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // PROPIEDADES - CON FILTROS POR ROL Y EXCLUSIÓN OFICINA VENEZUELA
-    // ═══════════════════════════════════════════════════════════
-
     public function getActionGetPropiedades(Request $request): array
     {
         $log = $GLOBALS['log'];
@@ -122,7 +107,7 @@ class InvLista extends Record
         $fechaDesde = $request->getQueryParam('fechaDesde');
         $fechaHasta = $request->getQueryParam('fechaHasta');
         $estatus    = $request->getQueryParam('estatus');
-        $userId     = $request->getQueryParam('userId'); // Para filtrar por asesor actual
+        $userId     = $request->getQueryParam('userId');
         $pagina     = max(1, (int)($request->getQueryParam('pagina') ?? 1));
         $porPagina  = 25;
         $offset     = ($pagina - 1) * $porPagina;
@@ -133,24 +118,20 @@ class InvLista extends Record
         $pdo = $em->getPDO();
 
         try {
-            // ── Obtener información del usuario actual ─────────────────
             $userInfo = null;
             if ($userId) {
                 $userInfo = $this->getUserInfoData($userId);
             }
 
-            // ── 1. Diagnosticar valores de status en la DB ─────────────────
             $statusRows = $pdo->query(
                 "SELECT DISTINCT status, COUNT(*) as c FROM propiedades WHERE deleted=0 GROUP BY status ORDER BY c DESC LIMIT 20"
             )->fetchAll(\PDO::FETCH_ASSOC);
             $statusLog = implode(' | ', array_map(fn($r) => "'{$r['status']}':{$r['c']}", $statusRows));
             $log->info("[InvLista::getPropiedades] Status en DB: {$statusLog}");
 
-            // ── 2. Detectar valor exacto de "en promocion" ─────────────────
             $statusTarget = $this->detectarStatusPromocion($pdo, $log);
             $log->info("[InvLista::getPropiedades] Status target: '{$statusTarget}'");
 
-            // ── 3. Construir WHERE SQL para IDs ────────────────────────────
             $where  = "p.deleted = 0";
             $params = [];
 
@@ -159,9 +140,6 @@ class InvLista extends Record
                 $params['status'] = $statusTarget;
             }
 
-            // ═══════════════════════════════════════════════════════════
-            // FILTRO POR ESTATUS DE INVENTARIO
-            // ═══════════════════════════════════════════════════════════
             if ($estatus) {
                 if ($estatus === 'Sin calcular') {
                     $where .= " AND NOT EXISTS (
@@ -180,11 +158,7 @@ class InvLista extends Record
                 }
             }
 
-            // ═══════════════════════════════════════════════════════════
-            // FILTROS POR ROL DEL USUARIO
-            // ═══════════════════════════════════════════════════════════
             if ($userInfo) {
-                // Siempre excluir oficina "Venezuela" (ID 1 o nombre "Venezuela")
                 $where .= " AND NOT EXISTS (
                     SELECT 1 FROM entity_team et_ven
                     INNER JOIN team t ON et_ven.team_id = t.id
@@ -194,11 +168,9 @@ class InvLista extends Record
                       AND (t.id = '1' OR t.name = 'Venezuela')
                 )";
 
-                // Si es Casa Nacional, no hay restricciones adicionales
                 if ($userInfo['esCasaNacional']) {
                     $log->info("[InvLista::getPropiedades] Usuario es Casa Nacional - sin restricciones de oficina/asesor");
                 }
-                // Si tiene roles de gestión (Director/Gerente)
                 else if ($userInfo['tieneRolesGestion']) {
                     $oficinaUsuario = $userInfo['oficinaUsuario'];
                     if ($oficinaUsuario) {
@@ -213,7 +185,6 @@ class InvLista extends Record
                         $log->info("[InvLista::getPropiedades] Usuario gestión - filtrando por oficina: {$oficinaUsuario}");
                     }
                 }
-                // Si es asesor (o regular sin roles)
                 else {
                     $where .= " AND p.id_asesor_exclusiva_id = :userId";
                     $params['userId'] = $userId;
@@ -221,9 +192,6 @@ class InvLista extends Record
                 }
             }
 
-            // ═══════════════════════════════════════════════════════════
-            // FILTROS MANUALES (desde la interfaz)
-            // ═══════════════════════════════════════════════════════════
             if ($asesorId) {
                 $where .= " AND p.id_asesor_exclusiva_id = :asesorId";
                 $params['asesorId'] = $asesorId;
@@ -261,7 +229,6 @@ class InvLista extends Record
                 $params['oficinaId'] = $oficinaId;
             }
 
-            // ── 4. Contar total ────────────────────────────────────────────
             $stmtCount = $pdo->prepare("SELECT COUNT(DISTINCT p.id) as total FROM propiedades p WHERE {$where}");
             $stmtCount->execute($params);
             $total = (int)($stmtCount->fetch(\PDO::FETCH_ASSOC)['total'] ?? 0);
@@ -272,7 +239,6 @@ class InvLista extends Record
                 return $this->respuestaPaginada([], 0, $pagina, $porPagina);
             }
 
-            // ── 5. Obtener IDs de la página con LIMIT/OFFSET ───────────────
             $stmtIds = $pdo->prepare(
                 "SELECT DISTINCT p.id, p.fecha_alta
                  FROM propiedades p
@@ -294,7 +260,6 @@ class InvLista extends Record
                 return $this->respuestaPaginada([], $total, $pagina, $porPagina);
             }
 
-            // ── 6. Cargar entidades + resolver asesor ────────────────────
             $result      = [];
             $asesorCache = [];
 
@@ -340,10 +305,6 @@ class InvLista extends Record
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
-
-    // ═══════════════════════════════════════════════════════════
-    // MÉTODO AUXILIAR para obtener info del usuario
-    // ═══════════════════════════════════════════════════════════
 
     private function getUserInfoData(string $userId): ?array
     {
@@ -397,10 +358,6 @@ class InvLista extends Record
         ];
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // RESTO DE MÉTODOS (sin cambios)
-    // ═══════════════════════════════════════════════════════════
-
     public function getActionGetCLAs(Request $request): array
     {
         $em    = $this->getContainer()->get('entityManager');
@@ -452,7 +409,6 @@ class InvLista extends Record
                     $tid = $team->getId();
                     if (strpos($tid, 'CLA') === 0) continue;
                     
-                    // Excluir oficina Venezuela
                     if ($tid === '1' || $team->get('name') === 'Venezuela') continue;
                     
                     $oficinasMap[$tid] = $oficinasMap[$tid] ?? $team->get('name');
@@ -620,7 +576,6 @@ class InvLista extends Record
         $oficinaId = null;
         $asesorId = $propiedad->get('idAsesorExclusivaId');
         
-        // Obtener la oficina de la propiedad (team que no empieza con CLA)
         $teams = $em->getRelation($propiedad, 'teams')->find();
         if ($teams) {
             foreach ($teams as $team) {

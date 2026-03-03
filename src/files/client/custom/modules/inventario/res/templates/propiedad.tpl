@@ -1,4 +1,4 @@
-<link rel="stylesheet" type="text/css" href="client/custom/modules/inventario/res/styles/inv-propiedades.css">
+<link rel="stylesheet" type="text/css" href="client/custom/modules/inventario/res/css/inv-propiedades.css">
 <div class="container-fluid inv-propiedad-container">
     <!-- Header principal -->
     <div class="row mb-4">
@@ -25,11 +25,9 @@
     </div>
 
     <!-- Loader -->
-    <div id="loading-container" style="text-align: center; padding: 80px 20px;">
+    <div id="loading-container" class="loading-container">
         <div class="spinner-large"></div>
-        <h4 class="mt-4" style="color: #1A1A1A; font-weight: 600; margin-bottom: 10px;">
-            Cargando datos...
-        </h4>
+        <h4 class="loading-title">Cargando datos...</h4>
     </div>
 
     <!-- Contenido (oculto inicialmente) -->
@@ -44,6 +42,26 @@
                 </h4>
             </div>
             <div class="panel-body">
+
+                <!-- Fila 0: ID + link 21Online -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="info-item">
+                            <div class="info-label">ID de Propiedad</div>
+                            <div class="info-id-row">
+                                <span class="info-value" id="prop-id">-</span>
+                                <div class="prop-buttons-container">
+                                    <!-- Botón 21Online -->
+                                    <span id="prop-link21online-inline" class="prop-button-wrapper"></span>
+                                    <!-- Botón Link Público -->
+                                    <span id="prop-link-publico-inline" class="prop-button-wrapper"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fila 1 -->
                 <div class="row">
                     <div class="col-md-3">
                         <div class="info-item">
@@ -70,6 +88,8 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Fila 2 -->
                 <div class="row">
                     <div class="col-md-3">
                         <div class="info-item">
@@ -90,6 +110,8 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Fila 3 -->
                 <div class="row">
                     <div class="col-md-3">
                         <div class="info-item">
@@ -116,14 +138,27 @@
                         </div>
                     </div>
                 </div>
-                <div class="row" style="margin-top: 20px;">
+
+                <!-- Fila 4: Link Público -->
+                <div class="row">
                     <div class="col-md-12">
-                        <div class="alert alert-info" style="margin-bottom: 0;">
+                        <div class="info-item">
+                            <div class="info-label">Link Público</div>
+                            <div class="info-value" id="prop-linkPublico">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Nota -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="alert alert-info prop-info-nota">
                             <i class="fas fa-info-circle"></i>
                             <strong>Nota:</strong> Cualquier cambio que se requiera hacer a estos datos debe hacerse en el sistema 21Online. Cualquier duda consulte a su asesor de casa nacional.
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
 
@@ -132,7 +167,7 @@
             <div class="panel-heading" data-action="toggle-panel">
                 <h4 class="panel-title">
                     <i class="fas fa-gavel"></i> Requisitos legales del inmueble
-                    <span class="nota-percentaje" style="float: right; margin-left: 10px; font-weight: bold; color: #666;">
+                    <span class="nota-percentaje">
                         <span id="nota-legal">0%</span>
                     </span>
                     <span class="fas fa-chevron-down"></span>
@@ -151,7 +186,7 @@
                     </div>
                 </div>
                 <div id="contenedor-recaudos-legal">
-                    <div class="text-center" style="padding: 20px;">
+                    <div class="recaudos-loading">
                         <div class="spinner-small"></div>
                         <p>Cargando requisitos legales...</p>
                     </div>
@@ -183,7 +218,7 @@
             <div class="panel-heading" data-action="toggle-panel">
                 <h4 class="panel-title">
                     <i class="fas fa-chart-line"></i> Mercadeo
-                    <span class="nota-percentaje" style="float: right; margin-left: 10px; font-weight: bold; color: #666;">
+                    <span class="nota-percentaje">
                         <span id="nota-mercadeo">0%</span>
                     </span>
                     <span class="fas fa-chevron-down"></span>
@@ -194,10 +229,9 @@
                     <div class="col-md-4">
                         <div class="form-group">
                             <label class="form-label">Buyer Persona</label>
-                            <!-- Solo Comprador y Arrendatario, igual que entityDefs -->
                             <select id="buyerPersona" class="form-control">
-                                <option value="Compradores">Compradores</option> 
-                                <option value="Inquilino">Inquilino</option>                                       
+                                <option value="Compradores">Compradores</option>
+                                <option value="Inquilino">Inquilino</option>
                             </select>
                         </div>
                     </div>
@@ -205,11 +239,9 @@
                 <div class="row">
                     <div class="col-md-12">
                         <div class="form-group">
-                            <label class="form-label">
-                                Sub Buyer Persona
-                            </label>
+                            <label class="form-label">Sub Buyer Persona</label>
                             <div id="subbuyers-checkbox-container" class="subbuyers-checkbox-grid">
-                                <div class="text-center" style="padding: 20px; color: #999;">
+                                <div class="subbuyers-loading">
                                     <i class="fas fa-spinner fa-spin"></i> Cargando opciones...
                                 </div>
                             </div>
@@ -217,7 +249,7 @@
                     </div>
                 </div>
                 <div id="contenedor-recaudos-mercadeo">
-                    <div class="text-center" style="padding: 20px;">
+                    <div class="recaudos-loading">
                         <div class="spinner-small"></div>
                         <p>Cargando elementos de mercadeo...</p>
                     </div>
@@ -244,7 +276,7 @@
             </div>
         </div>
 
-        <!-- Panel 4: Otros (MOVIDO ANTES DE APODERADO) -->
+        <!-- Panel 4: Otros -->
         <div class="panel">
             <div class="panel-heading" data-action="toggle-panel">
                 <h4 class="panel-title">
@@ -300,12 +332,11 @@
             </div>
         </div>
 
-        <!-- Panel 5: Apoderado (SIN badge de estado en el título) -->
+        <!-- Panel 5: Apoderado -->
         <div class="panel">
             <div class="panel-heading" data-action="toggle-panel">
                 <h4 class="panel-title">
                     <i class="fas fa-user-check"></i> Apoderado
-                    <!-- Badge eliminado: antes era <span id="nota-apoderado"> con cuadrito de color -->
                     <span class="fas fa-chevron-down"></span>
                 </h4>
             </div>
@@ -326,7 +357,7 @@
                     </div>
                 </div>
                 <div id="contenedor-recaudos-apoderado" style="display: none; margin-top: 20px;">
-                    <div class="text-center" style="padding: 20px;">
+                    <div class="recaudos-loading">
                         <div class="spinner-small"></div>
                         <p>Cargando requisitos de apoderado...</p>
                     </div>
@@ -369,9 +400,9 @@
 <div class="modal fade" id="modalCrearRecaudo" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
+            <div class="modal-header modal-header-primary">
+                <button type="button" class="close modal-close-btn" data-dismiss="modal">
+                    <span>&times;</span>
                 </button>
                 <h4 class="modal-title"><i class="fas fa-plus-circle"></i> <span id="modalTitulo">Crear Nuevo Recaudo</span></h4>
             </div>
@@ -396,34 +427,34 @@
     </div>
 </div>
 
-<!-- Modal para mostrar información detallada del Sub Buyer -->
+<!-- Modal info Sub Buyer -->
 <div class="modal fade" id="subBuyerInfoModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
-            <div class="modal-header" style="background: linear-gradient(135deg, #B8A279 0%, #D4C19C 100%); color: white;">
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="color: white; opacity: 0.8;">
-                    <span aria-hidden="true">&times;</span>
+            <div class="modal-header modal-header-primary">
+                <button type="button" class="close modal-close-btn" data-dismiss="modal">
+                    <span>&times;</span>
                 </button>
                 <h4 class="modal-title">
-                    <i class="fas fa-info-circle"></i> 
+                    <i class="fas fa-info-circle"></i>
                     <span id="subBuyerModalTitle">Información del Sub Buyer</span>
                 </h4>
             </div>
             <div class="modal-body">
                 <div class="row">
                     <div class="col-md-3 text-center">
-                        <div id="subBuyerLogoContainer">
-                            <img id="subBuyerLogo" src="" alt="Logo" style="max-width: 150px; max-height: 150px; display: none;">
-                            <div id="subBuyerLogoPlaceholder" style="width: 150px; height: 150px; background: #f5f5f5; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
-                                <i class="fas fa-building" style="font-size: 48px; color: #B8A279;"></i>
+                        <div id="subBuyerLogoContainer" class="subbuyer-logo-container">
+                            <img id="subBuyerLogo" src="" alt="Logo" class="subbuyer-logo-img">
+                            <div id="subBuyerLogoPlaceholder" class="subbuyer-logo-placeholder">
+                                <i class="fas fa-building subbuyer-logo-icon"></i>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-9">
-                        <h3 id="subBuyerModalName" style="margin-top: 0; color: #B8A279;"></h3>
-                        <p><span id="subBuyerModalType"></span></p>
-                        <hr>
-                        <div id="subBuyerModalDescription" style="max-height: 400px; overflow-y: auto; padding-right: 15px;"></div>
+                        <h3 id="subBuyerModalName" class="subbuyer-modal-name"></h3>
+                        <p id="subBuyerModalType"></p>
+                        <hr class="subbuyer-modal-divider">
+                        <div id="subBuyerModalDescription" class="subbuyer-modal-description"></div>
                     </div>
                 </div>
             </div>
@@ -436,75 +467,3 @@
         </div>
     </div>
 </div>
-
-<style>
-/* Corrección para todos los modales */
-.modal-header {
-    position: relative;
-    padding: 15px 20px !important;
-    border-bottom: none !important;
-}
-
-.modal-header .close {
-    position: absolute !important;
-    right: 15px !important;
-    top: 15px !important;
-    color: white !important;
-    opacity: 0.8 !important;
-    font-size: 28px !important;
-    font-weight: 300 !important;
-    line-height: 1 !important;
-    background: transparent !important;
-    border: 0 !important;
-    z-index: 10 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    width: auto !important;
-    height: auto !important;
-    text-shadow: none !important;
-}
-
-.modal-header .close span {
-    display: inline-block !important;
-    line-height: 1 !important;
-}
-
-.modal-header .close:hover {
-    opacity: 1 !important;
-    background: transparent !important;
-}
-
-.modal-title {
-    margin: 0 !important;
-    line-height: 1.5 !important;
-    font-size: 18px !important;
-    padding-right: 30px !important;
-}
-
-.modal-body {
-    padding: 20px !important;
-}
-
-.modal-footer {
-    border-top: 1px solid #e0e0e0 !important;
-    padding: 15px !important;
-}
-
-/* Para el modal de crear recaudo específicamente */
-#modalCrearRecaudo .modal-header {
-    background: linear-gradient(135deg, #B8A279 0%, #D4C19C 100%);
-    color: white;
-}
-
-/* Para el modal de info recaudo */
-#infoRecaudoModal .modal-header {
-    background: linear-gradient(135deg, #B8A279 0%, #D4C19C 100%);
-    color: white;
-}
-
-/* Para el modal de sub buyer */
-#subBuyerInfoModal .modal-header {
-    background: linear-gradient(135deg, #B8A279 0%, #D4C19C 100%);
-    color: white;
-}
-</style>

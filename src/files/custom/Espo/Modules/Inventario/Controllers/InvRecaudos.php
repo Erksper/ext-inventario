@@ -7,9 +7,6 @@ use Espo\Core\Api\Request;
 
 class InvRecaudos extends Record
 {
-    /**
-     * Crear nuevo recaudo
-     */
     public function postActionCrearRecaudo(Request $request): array
     {
         $data = $request->getParsedBody();
@@ -30,10 +27,8 @@ class InvRecaudos extends Record
         try {
             $recaudo = $entityManager->getEntity('InvRecaudos');
             
-            // Determinar el tipo
             $tipo = $data['tipo'];
             
-            // Si es array (para legal), verificar qué tipo de persona está seleccionada
             if (is_array($tipo)) {
                 $tipo = isset($data['tipoPersona']) ? $data['tipoPersona'] : 'Natural';
             }
@@ -45,7 +40,6 @@ class InvRecaudos extends Record
                 'default' => $data['default'] ?? false
             ]);
             
-            // Asignar al usuario actual
             $user = $this->getUser();
             if ($user) {
                 $recaudo->set('assignedUserId', $user->getId());
@@ -71,9 +65,6 @@ class InvRecaudos extends Record
         }
     }
 
-    /**
-     * Obtener recaudo por ID
-     */
     public function getActionGetRecaudoById(Request $request): array
     {
         $recaudoId = $request->getQueryParam('id');
@@ -107,15 +98,11 @@ class InvRecaudos extends Record
         ];
     }
 
-    /**
-     * Obtener recaudos por tipo y default
-     */
     public function getActionGetRecaudosByTipo(Request $request): array
     {
         $tipoParam = $request->getQueryParam('tipo');
         $default = $request->getQueryParam('default');
         
-        // Decodificar si es JSON (para tipos array)
         if (is_string($tipoParam) && strpos($tipoParam, '[') !== false) {
             $tipoParam = json_decode($tipoParam, true);
         }
@@ -123,24 +110,20 @@ class InvRecaudos extends Record
         $entityManager = $this->getContainer()->get('entityManager');
         
         try {
-            // Construir condiciones
             $conditions = [
                 'deleted' => false
             ];
             
-            // Manejar diferentes formatos de tipo
             if (is_array($tipoParam)) {
                 $conditions['tipo'] = $tipoParam;
             } else {
                 $conditions['tipo'] = $tipoParam;
             }
             
-            // Filtrar por default si se especifica
             if ($default !== null) {
                 $conditions['default'] = ($default === 'true' || $default === true);
             }
             
-            // Buscar en InvRecaudos
             $query = $entityManager->getRepository('InvRecaudos')
                 ->select(['id', 'name', 'descripcion', 'default', 'tipo'])
                 ->where($conditions)
@@ -175,7 +158,7 @@ class InvRecaudos extends Record
     public function getActionGetRecaudosRelacionados(Request $request): array
     {
         $propiedadId = $request->getQueryParam('propiedadId');
-        $tipo = $request->getQueryParam('tipo'); // 'legal', 'mercadeo', 'apoderado'
+        $tipo = $request->getQueryParam('tipo');
         
         if (!$propiedadId || !$tipo) {
             return [
@@ -187,7 +170,6 @@ class InvRecaudos extends Record
         $entityManager = $this->getContainer()->get('entityManager');
         
         try {
-            // Mapear tipo de frontend a tipos de backend
             $tiposBackend = [
                 'legal' => ['Natural', 'Juridico'],
                 'mercadeo' => 'Mercadeo',
@@ -196,7 +178,6 @@ class InvRecaudos extends Record
             
             $tipoBackend = $tiposBackend[$tipo] ?? $tipo;
             
-            // Buscar el inventario de la propiedad
             $inventario = $entityManager->getRepository('InvPropiedades')
                 ->where([
                     'idPropiedadId' => $propiedadId,
@@ -214,7 +195,6 @@ class InvRecaudos extends Record
                 ];
             }
             
-            // Buscar recaudos relacionados
             $recaudosRelacionados = [];
             $esPorDefecto = false;
             
@@ -227,16 +207,11 @@ class InvRecaudos extends Record
                 ])
                 ->find();
             
-            // Filtrar por tipo
             foreach ($propiedadesRecaudos as $propRecaudo) {
-                // ═══════════════════════════════════════════════════════════
-                // CORRECCIÓN: Obtener recaudo usando getRelation()
-                // ═══════════════════════════════════════════════════════════
                 $recaudo = $entityManager->getRelation($propRecaudo, 'idRecaudos')->findOne();
                 if ($recaudo) {
                     $tipoRecaudo = $recaudo->get('tipo');
                     
-                    // Verificar si coincide con el tipo solicitado
                     $coincide = false;
                     if (is_array($tipoBackend)) {
                         $coincide = in_array($tipoRecaudo, $tipoBackend);
@@ -257,7 +232,6 @@ class InvRecaudos extends Record
                 }
             }
             
-            // Si no hay recaudos relacionados, cargar los por defecto
             if (empty($recaudosRelacionados)) {
                 $esPorDefecto = true;
                 

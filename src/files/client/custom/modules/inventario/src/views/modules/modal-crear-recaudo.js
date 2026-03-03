@@ -14,7 +14,6 @@ define('inventario:views/modules/modal-crear-recaudo', [], function () {
         this.setupEventListeners();
         
         this.modalInicializado = true;
-        console.log('ModalCrearRecaudo inicializado');
     };
 
     ModalCrearRecaudoManager.prototype.crearModalHTML = function () {
@@ -56,24 +55,20 @@ define('inventario:views/modules/modal-crear-recaudo', [], function () {
     ModalCrearRecaudoManager.prototype.agregarModalAlDOM = function () {
         if ($('#modalCrearRecaudo').length === 0) {
             $('body').append(this.modalHtml);
-            console.log('Modal agregado al DOM');
         }
     };
 
     ModalCrearRecaudoManager.prototype.setupEventListeners = function () {
         var self = this;
         
-        // Guardar recaudo
         $(document).off('click', '#btnGuardarRecaudo').on('click', '#btnGuardarRecaudo', function () {
             self.guardarNuevoRecaudo();
         });
         
-        // Limpiar campos al cerrar modal
         $('#modalCrearRecaudo').off('hidden.bs.modal').on('hidden.bs.modal', function () {
             self.limpiarCampos();
         });
         
-        // Permitir Enter para guardar
         $(document).off('keypress', '#nombreRecaudo, #descripcionRecaudo').on('keypress', '#nombreRecaudo, #descripcionRecaudo', function (e) {
             if (e.which === 13) {
                 e.preventDefault();
@@ -89,7 +84,6 @@ define('inventario:views/modules/modal-crear-recaudo', [], function () {
         $('#modalTitulo').text('Crear Nuevo Recaudo ' + tipoText);
         $('#tipoRecaudoModal').val(tipo);
         
-        // Enfocar en el campo de nombre
         setTimeout(function() {
             $('#nombreRecaudo').focus();
         }, 500);
@@ -124,8 +118,6 @@ define('inventario:views/modules/modal-crear-recaudo', [], function () {
         $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Guardando...');
         
         var self = this;
-        
-        // Para legal, obtener el tipo de persona seleccionado
         var tipoPersonaSeleccionada = '';
         if (tipo === 'legal') {
             tipoPersonaSeleccionada = this.view.$el.find('#tipoPersona').val();
@@ -138,7 +130,6 @@ define('inventario:views/modules/modal-crear-recaudo', [], function () {
             default: false
         };
         
-        // Agregar tipoPersona si es legal
         if (tipo === 'legal' && tipoPersonaSeleccionada) {
             requestData.tipoPersona = tipoPersonaSeleccionada;
         }
@@ -149,7 +140,6 @@ define('inventario:views/modules/modal-crear-recaudo', [], function () {
                     Espo.Ui.success('Recaudo creado exitosamente');
                     $('#modalCrearRecaudo').modal('hide');
                     
-                    // Disparar evento SOLO UNA VEZ
                     $(document).trigger('recaudoCreado.inventario', {
                         tipo: tipo,
                         recaudoId: response.data.id,
@@ -157,13 +147,11 @@ define('inventario:views/modules/modal-crear-recaudo', [], function () {
                         recaudoTipo: response.data.tipo
                     });
                     
-                    // Actualizar inmediatamente el dropdown y la lista
                     self.actualizarListaDespuesDeCrear(tipo, response.data);
                 } else {
                     Espo.Ui.error(response.error || 'Error al crear recaudo');
                 }
             }).catch(function (error) {
-                console.error('Error al crear recaudo:', error);
                 Espo.Ui.error('Error al crear recaudo');
             }).finally(function () {
                 $btn.prop('disabled', false).html(originalText);
@@ -173,23 +161,18 @@ define('inventario:views/modules/modal-crear-recaudo', [], function () {
     ModalCrearRecaudoManager.prototype.actualizarListaDespuesDeCrear = function (tipo, recaudoData) {
         var self = this;
         
-        // Actualizar el dropdown correspondiente
         if (this.view.recaudosDinamicosManager) {
             this.view.recaudosDinamicosManager.cargarSelectAgregarRecaudos(
                 this.view.recaudosDinamicosManager.getTipoPorCampoId(tipo),
                 tipo
             );
             
-            // Si estamos en la misma pestaña, agregar el recaudo inmediatamente a la lista
             if (tipo === 'legal') {
-                // Verificar si el recaudo corresponde al tipo de persona seleccionado
                 var tipoPersonaActual = this.view.$el.find('#tipoPersona').val();
                 if (recaudoData.tipo === tipoPersonaActual) {
-                    // Agregar a la lista inmediatamente
                     this.view.recaudosDinamicosManager.agregarRecaudoDesdeCreacion(recaudoData.id, tipo);
                 }
             } else {
-                // Para mercadeo y apoderado, agregar inmediatamente
                 this.view.recaudosDinamicosManager.agregarRecaudoDesdeCreacion(recaudoData.id, tipo);
             }
         }

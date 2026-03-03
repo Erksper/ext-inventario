@@ -10,9 +10,9 @@ define('inventario:views/modules/permisos', [], function () {
             esCoordinador:    false,
             esAsesor:         false,
             claUsuario:       null,
-            claNombre:        null,  // Asegurar que existe
+            claNombre:        null,
             oficinaUsuario:   null,
-            oficinaNombre:    null,  // Asegurar que existe
+            oficinaNombre:    null,
             userName:         null,
             usuarioId:        null,
             permisosListo:    false
@@ -41,15 +41,14 @@ define('inventario:views/modules/permisos', [], function () {
                             esCoordinador:    info.esCoordinador   || false,
                             esAsesor:         esAsesorPuro,
                             claUsuario:       info.claUsuario      || null,
-                            claNombre:        info.claNombre       || null,  // NUEVO
+                            claNombre:        info.claNombre       || null,
                             oficinaUsuario:   info.oficinaUsuario  || null,
-                            oficinaNombre:    info.oficinaNombre   || null,  // NUEVO
+                            oficinaNombre:    info.oficinaNombre   || null,
                             userName:         info.userName        || null,
                             usuarioId:        info.usuarioId       || user.id,
                             permisosListo:    true
                         };
 
-                        console.log('PermisosManager - datos completos:', self.permisos); // Log para debug
                         resolve(self.permisos);
                     } else {
                         reject(response.error || 'Error al cargar permisos');

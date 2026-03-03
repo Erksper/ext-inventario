@@ -7,9 +7,6 @@ use Espo\Core\Api\Request;
 
 class InvPropiedades extends Base
 {
-    /**
-     * Obtener o crear inventario para una propiedad
-     */
     public function getActionGetOrCreate(Request $request): array
     {
         $propiedadId = $request->getQueryParam('propiedadId');
@@ -20,7 +17,6 @@ class InvPropiedades extends Base
 
         $entityManager = $this->getContainer()->get('entityManager');
 
-        // La entidad Propiedades vive en otro módulo; entityManager la encuentra por nombre igual
         $propiedad = $entityManager->getEntity('Propiedades', $propiedadId);
         if (!$propiedad) {
             return ['success' => false, 'error' => 'Propiedad no encontrada'];
@@ -47,16 +43,12 @@ class InvPropiedades extends Base
             $entityManager->saveEntity($inventario);
         }
 
-        // ═══════════════════════════════════════════════════════════
-        // CORRECCIÓN 1: Obtener asesor usando getRelation()
-        // ═══════════════════════════════════════════════════════════
         $asesorNombre = null;
         $asesorExclusiva = $entityManager->getRelation($propiedad, 'idAsesorExclusiva')->findOne();
         if ($asesorExclusiva) {
             $asesorNombre = $asesorExclusiva->get('name');
         }
 
-        // Construir ubicación legible
         $partes = array_filter([
             $propiedad->get('calle'),
             $propiedad->get('numero'),
@@ -87,7 +79,7 @@ class InvPropiedades extends Base
                     'tipoOperacion'   => $propiedad->get('tipoOperacion'),
                     'tipoPropiedad'   => $propiedad->get('tipoPropiedad'),
                     'subTipoPropiedad'=> $propiedad->get('subTipoPropiedad'),
-                    'precioEnContrato' => $propiedad->get('precioEnContrato'), // ← Verificar
+                    'precioEnContrato' => $propiedad->get('precioEnContrato'),
                     'monedaEnContrato' => $propiedad->get('monedaEnContrato'),
                     'm2C'             => $propiedad->get('m2C'),
                     'm2T'             => $propiedad->get('m2T'),
@@ -95,6 +87,8 @@ class InvPropiedades extends Base
                     'asesorNombre'    => $asesorNombre,
                     'fechaAlta'       => $propiedad->get('fechaAlta'),
                     'status'          => $propiedad->get('status'),
+                    'linkPublico'     => $propiedad->get('linkPublico'),
+                    'link21Online'    => $propiedad->get('link21Online'),
                 ]
             ]
         ];
@@ -116,9 +110,6 @@ class InvPropiedades extends Base
 
             $subBuyers = [];
             
-            // ═══════════════════════════════════════════════════════════
-            // CORRECCIÓN 2: Usar getRelation() para obtener subBuyers
-            // ═══════════════════════════════════════════════════════════
             try {
                 $subBuyerCollection = $entityManager->getRelation($inventario, 'subBuyers')->find();
                 foreach ($subBuyerCollection as $subBuyer) {
@@ -129,7 +120,6 @@ class InvPropiedades extends Base
                     ];
                 }
             } catch (\Exception $e) {
-                // Fallback a PDO si la relación no funciona
                 $pdo = $entityManager->getPDO();
                 $stmt = $pdo->prepare("
                     SELECT sb.id, sb.name, sb.buyer
@@ -185,9 +175,6 @@ class InvPropiedades extends Base
         $esPorDefecto = true;
 
         foreach ($recaudosGuardados as $rel) {
-            // ═══════════════════════════════════════════════════════════
-            // CORRECCIÓN 3: Obtener recaudo usando getRelation()
-            // ═══════════════════════════════════════════════════════════
             $recaudo = $entityManager->getRelation($rel, 'idRecaudos')->findOne();
             if ($recaudo) {
                 $recaudos[] = [
@@ -280,9 +267,6 @@ class InvPropiedades extends Base
         }
     }
 
-    /**
-     * Guardar inventario completo - versión incremental
-     */
     public function postActionSave(Request $request): array
     {
         $data = $request->getParsedBody();
@@ -369,9 +353,6 @@ class InvPropiedades extends Base
 
             $recaudos = [];
             foreach ($recaudosGuardados as $rel) {
-                // ═══════════════════════════════════════════════════════════
-                // CORRECCIÓN 4: Obtener recaudo usando getRelation()
-                // ═══════════════════════════════════════════════════════════
                 $recaudo = $entityManager->getRelation($rel, 'idRecaudos')->findOne();
                 if ($recaudo) {
                     $recaudos[] = [
@@ -388,8 +369,6 @@ class InvPropiedades extends Base
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
-
-    // ===== MÉTODOS PRIVADOS =====
 
     private function guardarRecaudosIncremental($inventario, $recaudosArray, $valoresArray): array
     {
@@ -520,27 +499,23 @@ class InvPropiedades extends Base
         $entityManager = $this->getContainer()->get('entityManager');
         $inventarioId = $inventario->get('id');
         
-        // Si no hay IDs, no hacemos nada
         if (!is_array($subBuyersIds)) {
             return;
         }
         
         try {
-            // Intentar usar el ORM primero
             $actuales = $entityManager->getRelation($inventario, 'subBuyers')->find();
             $actualesIds = [];
             foreach ($actuales as $sb) {
                 $actualesIds[] = $sb->get('id');
             }
 
-            // Eliminar los que ya no están
             foreach ($actualesIds as $actualId) {
                 if (!in_array($actualId, $subBuyersIds)) {
                     $entityManager->getRelation($inventario, 'subBuyers')->unrelateById($actualId);
                 }
             }
             
-            // Agregar los nuevos
             foreach ($subBuyersIds as $newId) {
                 if (!in_array($newId, $actualesIds)) {
                     $entityManager->getRelation($inventario, 'subBuyers')->relateById($newId);
@@ -548,31 +523,24 @@ class InvPropiedades extends Base
             }
             
         } catch (\Exception $e) {
-            // Si el ORM falla, registrar el error pero no detener la operación
             $GLOBALS['log']->error('Error al guardar subBuyers con ORM: ' . $e->getMessage());
             
-            // Como no podemos usar el ORM, al menos intentamos con PDO
             try {
                 $pdo = $entityManager->getPDO();
                 
-                // Primero marcar todos como eliminados
                 $pdo->prepare("UPDATE inv_propiedades_inv_sub_buyer SET deleted = 1 WHERE inv_propiedades_id = :id")
                     ->execute(['id' => $inventarioId]);
                 
-                // Luego insertar/actualizar los nuevos
                 foreach ($subBuyersIds as $sbId) {
-                    // Verificar si ya existe
                     $stmt = $pdo->prepare("SELECT id FROM inv_propiedades_inv_sub_buyer WHERE inv_propiedades_id = :invId AND inv_sub_buyer_id = :sbId");
                     $stmt->execute(['invId' => $inventarioId, 'sbId' => $sbId]);
                     $existe = $stmt->fetch();
                     
                     if ($existe) {
-                        // Actualizar
                         $pdo->prepare("UPDATE inv_propiedades_inv_sub_buyer SET deleted = 0 WHERE inv_propiedades_id = :invId AND inv_sub_buyer_id = :sbId")
                             ->execute(['invId' => $inventarioId, 'sbId' => $sbId]);
                     } else {
-                        // Insertar nuevo
-                        $id = uniqid(); // Generar ID único
+                        $id = uniqid();
                         $pdo->prepare("INSERT INTO inv_propiedades_inv_sub_buyer (id, inv_propiedades_id, inv_sub_buyer_id, deleted) VALUES (:id, :invId, :sbId, 0)")
                             ->execute(['id' => $id, 'invId' => $inventarioId, 'sbId' => $sbId]);
                     }
