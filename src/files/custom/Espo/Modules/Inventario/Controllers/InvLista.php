@@ -496,7 +496,7 @@ class InvLista extends Record
                 if ($inv) {
                     $resultado[$pid] = [
                         'id'               => $inv->getId(),
-                        'estatusPropiedad' => $inv->get('estatusPropiedad') ?? 'Sin calcular',
+                        'estatusPropiedad' => $inv->get('estatusPropiedad') ?? 'Por analizar',
                         'demanda'          => $inv->get('demanda')          ?? 'Sin definir',
                         'apoderado'        => (bool)$inv->get('apoderado'),
                     ];

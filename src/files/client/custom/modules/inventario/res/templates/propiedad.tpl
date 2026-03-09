@@ -15,7 +15,7 @@
                         </div>
                     </div>
                     <div class="header-actions">
-                        <button class="btn btn-secondary" data-action="volver">
+                        <button class="btn btn-primary" data-action="volver">
                             <i class="fas fa-arrow-left"></i> Volver
                         </button>
                     </div>
@@ -37,11 +37,16 @@
         <div class="panel">
             <div class="panel-heading" data-action="toggle-panel">
                 <h4 class="panel-title">
-                    <i class="fas fa-home"></i> Información de la Propiedad
-                    <span class="fas fa-chevron-up"></span>
+                    <span class="panel-title-text">
+                        <i class="fas fa-home"></i>
+                        <span class="panel-title-label">Información de la Propiedad</span>
+                    </span>
+                    <span class="panel-title-right">
+                        <span class="fas fa-chevron-down"></span>
+                    </span>
                 </h4>
             </div>
-            <div class="panel-body">
+            <div class="panel-body" style="display: none;">
 
                 <!-- Fila 0: ID + link 21Online -->
                 <div class="row">
@@ -166,11 +171,16 @@
         <div class="panel">
             <div class="panel-heading" data-action="toggle-panel">
                 <h4 class="panel-title">
-                    <i class="fas fa-gavel"></i> Requisitos legales del inmueble
-                    <span class="nota-percentaje">
-                        <span id="nota-legal">0%</span>
+                    <span class="panel-title-text">
+                        <i class="fas fa-gavel"></i>
+                        <span class="panel-title-label">Requisitos legales del inmueble</span>
                     </span>
-                    <span class="fas fa-chevron-down"></span>
+                    <span class="panel-title-right">
+                        <span class="nota-percentaje">
+                            <span id="nota-legal">0%</span>
+                        </span>
+                        <span class="fas fa-chevron-down"></span>
+                    </span>
                 </h4>
             </div>
             <div class="panel-body" style="display: none;">
@@ -217,11 +227,16 @@
         <div class="panel">
             <div class="panel-heading" data-action="toggle-panel">
                 <h4 class="panel-title">
-                    <i class="fas fa-chart-line"></i> Mercadeo
-                    <span class="nota-percentaje">
-                        <span id="nota-mercadeo">0%</span>
+                    <span class="panel-title-text">
+                        <i class="fas fa-chart-line"></i>
+                        <span class="panel-title-label">Mercadeo</span>
                     </span>
-                    <span class="fas fa-chevron-down"></span>
+                    <span class="panel-title-right">
+                        <span class="nota-percentaje">
+                            <span id="nota-mercadeo">0%</span>
+                        </span>
+                        <span class="fas fa-chevron-down"></span>
+                    </span>
                 </h4>
             </div>
             <div class="panel-body" style="display: none;">
@@ -280,8 +295,13 @@
         <div class="panel">
             <div class="panel-heading" data-action="toggle-panel">
                 <h4 class="panel-title">
-                    <i class="fas fa-ellipsis-h"></i> Otros
-                    <span class="fas fa-chevron-down"></span>
+                    <span class="panel-title-text">
+                        <i class="fas fa-ellipsis-h"></i>
+                        <span class="panel-title-label">Otros</span>
+                    </span>
+                    <span class="panel-title-right">
+                        <span class="fas fa-chevron-down"></span>
+                    </span>
                 </h4>
             </div>
             <div class="panel-body" style="display: none;">
@@ -336,8 +356,13 @@
         <div class="panel">
             <div class="panel-heading" data-action="toggle-panel">
                 <h4 class="panel-title">
-                    <i class="fas fa-user-check"></i> Apoderado
-                    <span class="fas fa-chevron-down"></span>
+                    <span class="panel-title-text">
+                        <i class="fas fa-user-check"></i>
+                        <span class="panel-title-label">Apoderado</span>
+                    </span>
+                    <span class="panel-title-right">
+                        <span class="fas fa-chevron-down"></span>
+                    </span>
                 </h4>
             </div>
             <div class="panel-body" style="display: none;">
@@ -386,8 +411,8 @@
 
         <!-- Botones de acción -->
         <div class="form-actions">
-            <button class="btn btn-default" data-action="volver">
-                <i class="fas fa-times"></i> Volver
+            <button class="btn btn-primary" data-action="volver">
+                <i class="fas fa-arrow-left"></i> Volver
             </button>
             <button class="btn btn-primary" data-action="guardar">
                 <i class="fas fa-save"></i> Guardar Análisis de la Propiedad

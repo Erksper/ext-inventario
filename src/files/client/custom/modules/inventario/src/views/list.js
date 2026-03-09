@@ -450,7 +450,7 @@ define('inventario:views/list', [
             this.propiedadesPagina.forEach(function (prop, idx) {
                 var num      = inicioPag + idx + 1;
                 var inv      = self.inventarioData[prop.id] || null;
-                var estatus  = inv ? (inv.estatusPropiedad || 'Sin calcular') : 'Sin calcular';
+                var estatus = inv ? (inv.estatusPropiedad || 'Por analizar') : 'Por analizar';
                 var demanda  = inv ? (inv.demanda || 'Sin definir') : 'Sin definir';
                 var dias     = self.calcularDias(prop.fechaAlta);
                 var partes   = [prop.calle, prop.numero, prop.urbanizacion].filter(Boolean);

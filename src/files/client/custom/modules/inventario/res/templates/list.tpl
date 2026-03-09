@@ -5,8 +5,8 @@
     <div class="inv-page-header">
         <div class="inv-header-icon"><i class="fas fa-building"></i></div>
         <div>
-            <h1 class="inv-page-title">Inventario de Propiedades</h1>
-            <p class="inv-page-sub">Gestión y visualización del inventario inmobiliario</p>
+            <h1 class="inv-page-title">Análisis de Inventario</h1>
+            <p class="inv-page-sub">Gestión y análisis del inventario inmobiliario</p>
         </div>
     </div>
 

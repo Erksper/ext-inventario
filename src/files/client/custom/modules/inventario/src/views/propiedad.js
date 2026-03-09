@@ -533,7 +533,10 @@ define('inventario:views/propiedad', [
             if ($firstPanel.length) {
                 $firstPanel.addClass('active');
                 $firstPanel.next('.panel-body').show();
-                $firstPanel.find('.fas').removeClass('fa-chevron-down').addClass('fa-chevron-up');
+                // Asegurar que solo el chevron derecho tenga la clase
+                $firstPanel.find('.panel-title-right .fas')
+                    .removeClass('fa-chevron-down')
+                    .addClass('fa-chevron-up');
             }
         },
 
@@ -569,8 +572,9 @@ define('inventario:views/propiedad', [
             var $header = $(e.currentTarget);
             var $panel = $header.closest('.panel');
             var $body = $panel.find('.panel-body');
-            var $icon = $header.find('.fa-chevron-down, .fa-chevron-up');
-
+            var $icon = $header.find('.panel-title-right .fa-chevron-down, .panel-title-right .fa-chevron-up');
+            
+            // SOLO modificamos el icono que está dentro de panel-title-right
             if ($body.is(':visible')) {
                 $body.slideUp('fast');
                 $icon.removeClass('fa-chevron-up').addClass('fa-chevron-down');
@@ -645,7 +649,7 @@ define('inventario:views/propiedad', [
             this.mostrarInfoApoderado();
 
             this.$el.find('.panel-body').hide();
-            this.$el.find('.panel-heading .fas')
+            this.$el.find('.panel-heading .panel-title-right .fas')
                 .removeClass('fa-chevron-up').addClass('fa-chevron-down');
         },
 
@@ -732,7 +736,7 @@ define('inventario:views/propiedad', [
 
             var $linkPublicoInline = this.$el.find('#prop-link-publico-inline');
             if (this.propiedadData.linkPublico) {
-                $linkPublicoInline.html('<a href="' + this.escapeHtml(this.propiedadData.linkPublico) + '" target="_blank" rel="noopener noreferrer" class="prop-button publico" title="Buscar propiedad">' +
+                $linkPublicoInline.html('<a href="' + this.escapeHtml(this.propiedadData.linkPublico) + '" target="_blank" rel="noopener noreferrer" class="prop-button" title="Buscar propiedad">' +
                     '<i class="fas fa-search"></i> Buscar propiedad</a>');
             } else {
                 $linkPublicoInline.html('');
